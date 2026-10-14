@@ -332,8 +332,32 @@ The ONNX building footprints were rasterized onto the native $1024 \times 1024$ 
 2. `outputs/reports/onnx_priority_zones.json` — 3.6 KB (9 ranked priority zones)
 3. `outputs/reports/onnx_summary_metrics.json` — 351 bytes (`is_simulated=False`, 100% damaged)
 4. `outputs/overlays/onnx_damage_overlay.png` — 1.9 MB (Pre/post spectral shift heat overlay)
-5. `outputs/reports/onnx_browser_verification.png` — 62 KB (Playwright Chromium screenshot)
-6. `outputs/temp_downloads/browser_onnx_damage.geojson` — 78 KB (Direct browser download)
+5. `outputs/reports/onnx_browser_verification.png` — 345 KB (Playwright Chromium screenshot)
+6. `outputs/temp_downloads/browser_onnx_damage.geojson` — 84 KB (Direct browser download)
 7. `outputs/reports/backend_comparison.json` — 3.2 KB (Complete 3-backend comparison)
 8. `outputs/reports/onnx_evaluation.json` — 1.5 KB (Pixel-level ground-truth evaluation)
+
+---
+
+## 12. Geographic Coordinate & GIS Map View Alignment Audit
+
+- **Audit Timestamp:** 2026-10-15T00:55:00+05:30
+- **Auditor:** Meridian QA & Geospatial Systems Engineer
+- **Observed Discrepancy:** Aerial imagery panels displayed residential rooftops and street infrastructure in Callaway, FL, while Folium GIS map plotted building polygons in an uninhabited pine swamp near Gulf Coast Parkway and North Star Avenue.
+- **Root Cause:**
+  1. The NOAA STAC flight sheet `20181011aC0853300w301030n` origin was at `lat=30.1751°N, lon=-85.5501°W` (near Tram Road wetland).
+  2. The benchmark image tile `_7_0` is row 7, col 0, placing its true bounding box $2.3\text{ km}$ south at `min_lon=-85.550100`, `min_lat=30.152997`, `max_lon=-85.547337`, `max_lat=30.155760` (Center: `30.154378°N, -85.548719°W`).
+  3. `app/main.py` and `models/real_predict.py` previously had default bounds and user bbox approximations pinned to the $30.175^\circ\text{N}$ wetland area.
+- **Remediation Implemented:**
+  - Bound `dataset_bounds = (-85.550100, 30.152997, -85.547337, 30.155760)` directly in `app/main.py` for `run_real_inference` and `compute_priority_zones`.
+  - Updated `models/real_predict.py` to prioritize metadata bounds and use realistic drone footprint scale (`delta_deg=0.0014`, ~300m) for custom uploads.
+  - Aligned map centers and fallback defaults in `app/ui/map_view.py` and `utils/priority.py` to `(30.154378, -85.548719)`.
+- **Validation Evidence:**
+  - OpenStreetMap Reverse Geocode verification:
+    - Feature BLD-001: `310, Shirley Drive, Callaway, Bay County, Florida, 32404`
+    - Feature BLD-002: `337, James Street, Callaway, Bay County, Florida, 32404`
+    - Feature BLD-004: `357, Shirley Drive, Callaway, Bay County, Florida, 32404`
+  - Playwright live browser test passed and verified that all downloaded GeoJSON features have WGS84 coordinates in Callaway, FL (`[-85.550100, 30.152997, -85.547337, 30.155760]`).
+  - All 59 pytest tests and 2 standalone verification pipelines passed.
+
 
