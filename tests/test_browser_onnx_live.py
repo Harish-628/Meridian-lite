@@ -137,11 +137,19 @@ def run_onnx_browser_verification(port: int = 8505) -> bool:
             assert first_props.get("is_simulated") is False, f"Expected is_simulated=False"
             print(f"[PASS] Downloaded GeoJSON verified: {len(feats)} features from ONNX backend")
 
-            # 14. Save screenshot
+            # 14. Save screenshot with map and imagery visible
             SCREENSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
-            page.screenshot(path=str(SCREENSHOT_PATH), full_page=True)
+            map_heading = page.locator("text=Geospatial Damage Assessment Map")
+            if map_heading.is_visible():
+                map_heading.scroll_into_view_if_needed()
+                time.sleep(3)
+            page.screenshot(path=str(SCREENSHOT_PATH))
             assert SCREENSHOT_PATH.exists() and SCREENSHOT_PATH.stat().st_size > 10000
             print(f"[PASS] Captured screenshot to {SCREENSHOT_PATH} ({SCREENSHOT_PATH.stat().st_size} bytes)")
+
+            # Also copy to meridian_professional_dashboard.png
+            dash_path = PROJECT_ROOT / "outputs" / "reports" / "meridian_professional_dashboard.png"
+            dash_path.write_bytes(SCREENSHOT_PATH.read_bytes())
 
             browser.close()
             return True

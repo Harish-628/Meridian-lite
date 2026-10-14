@@ -41,17 +41,7 @@ def _resolve_bounds(
             coordinate_source="georeferenced_bounds",
         )
 
-    if center_lat is not None and center_lon is not None:
-        return AffineGeoreferencer.from_center_and_radius(
-            image_width=image_width,
-            image_height=image_height,
-            center_lat=center_lat,
-            center_lon=center_lon,
-            delta_deg=0.005,
-            coordinate_source="user_bbox_approximation",
-        )
-
-    # Check dataset metadata for known dataset bounds
+    # Check dataset metadata for known dataset bounds first if center matches or is absent
     if METADATA_FILE.exists():
         try:
             with open(METADATA_FILE, "r") as f:
@@ -64,14 +54,27 @@ def _resolve_bounds(
                         float(bbox["max_lon"]),
                         float(bbox["max_lat"]),
                     )
-                    return AffineGeoreferencer(
-                        image_width=image_width,
-                        image_height=image_height,
-                        bounds=b,
-                        coordinate_source="georeferenced_bounds",
-                    )
+                    ds_lat = float(bbox.get("center_lat", 30.154378))
+                    if center_lat is None or abs(center_lat - ds_lat) < 0.05:
+                        return AffineGeoreferencer(
+                            image_width=image_width,
+                            image_height=image_height,
+                            bounds=b,
+                            coordinate_source="georeferenced_bounds",
+                        )
         except Exception as exc:
             logger.warning(f"Could not read dataset metadata bounds: {exc}")
+
+    # Fallback to user-provided center approximation if custom coordinates specified
+    if center_lat is not None and center_lon is not None:
+        return AffineGeoreferencer.from_center_and_radius(
+            image_width=image_width,
+            image_height=image_height,
+            center_lat=center_lat,
+            center_lon=center_lon,
+            delta_deg=0.0014,
+            coordinate_source="user_bbox_approximation",
+        )
 
     # Fallback default
     return AffineGeoreferencer(

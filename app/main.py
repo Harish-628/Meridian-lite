@@ -118,6 +118,7 @@ if cfg.run_button:
             if cfg.dataset_choice == "Hurricane Michael (Mexico Beach, FL - Oct 2018)":
                 pre_path = PROJECT_ROOT / "data" / "processed" / "hurricane_michael_pre.png"
                 post_path = PROJECT_ROOT / "data" / "processed" / "hurricane_michael_post.png"
+                dataset_bounds = (-85.550100, 30.152997, -85.547337, 30.155760)
             else:
                 if not cfg.uploaded_pre_file or not cfg.uploaded_post_file:
                     st.error("❌ Both pre-disaster and post-disaster images are required.")
@@ -128,6 +129,7 @@ if cfg.run_button:
                 post_path = temp_upload_dir / f"real_post_{cfg.uploaded_post_file.name}"
                 pre_path.write_bytes(cfg.uploaded_pre_file.getvalue())
                 post_path.write_bytes(cfg.uploaded_post_file.getvalue())
+                dataset_bounds = None
 
             backend_key = "real_damage_model"
             if "Classical" in cfg.backend_choice:
@@ -143,6 +145,7 @@ if cfg.run_button:
                 confidence_threshold=cfg.confidence_threshold,
                 max_features=cfg.max_features,
                 backend_name=backend_key,
+                bounds=dataset_bounds,
             )
 
             _, overlay_p = create_damage_overlay(
@@ -155,7 +158,7 @@ if cfg.run_button:
                 feature_collection=geojson_result,
                 grid_rows=cfg.grid_rows,
                 grid_cols=cfg.grid_cols,
-                default_bounds=(-85.555, 30.170, -85.545, 30.180),
+                default_bounds=dataset_bounds or (-85.550100, 30.152997, -85.547337, 30.155760),
             )
 
             save_geojson(geojson_result, DEFAULT_GEOJSON_OUTPUT)

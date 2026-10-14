@@ -65,9 +65,9 @@ def compute_priority_zones(
                 min_lat -= 0.001
                 max_lat += 0.001
         else:
-            min_lon, min_lat, max_lon, max_lat = default_bounds or (-85.555, 30.170, -85.545, 30.180)
+            min_lon, min_lat, max_lon, max_lat = default_bounds or (-85.550100, 30.152997, -85.547337, 30.155760)
     else:
-        min_lon, min_lat, max_lon, max_lat = default_bounds or (-85.555, 30.170, -85.545, 30.180)
+        min_lon, min_lat, max_lon, max_lat = default_bounds or (-85.550100, 30.152997, -85.547337, 30.155760)
 
     lon_step = (max_lon - min_lon) / max(grid_cols, 1)
     lat_step = (max_lat - min_lat) / max(grid_rows, 1)

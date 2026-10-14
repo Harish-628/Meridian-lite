@@ -15,8 +15,8 @@ from utils.geojson_utils import DAMAGE_HEX_COLORS, get_bounds
 def build_folium_map(
     geojson_data: dict[str, Any],
     priority_zones: list[dict[str, Any]] | None = None,
-    center_lat: float = 30.1750,
-    center_lon: float = -85.5500,
+    center_lat: float = 30.154378,
+    center_lon: float = -85.548719,
 ) -> folium.Map:
     """Construct an interactive Folium map populated with building polygons and priority zones."""
     m = folium.Map(

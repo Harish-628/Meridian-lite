@@ -144,10 +144,10 @@ def main() -> int:
 
     # 6. Georeferencing Verification
     try:
-        geo = AffineGeoreferencer(1024, 1024, (-85.555, 30.170, -85.545, 30.180))
+        geo = AffineGeoreferencer(1024, 1024, (-85.550100, 30.152997, -85.547337, 30.155760))
         c_lon, c_lat = geo.pixel_to_lonlat(512, 512)
-        assert -85.555 <= c_lon <= -85.545
-        assert 30.170 <= c_lat <= 30.180
+        assert -85.550100 <= c_lon <= -85.547337
+        assert 30.152997 <= c_lat <= 30.155760
         # Check feature geometry in GeoJSON
         f0 = fc_onnx["features"][0]
         poly = f0["geometry"]["coordinates"][0]
