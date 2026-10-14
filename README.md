@@ -137,33 +137,33 @@ MERIDIAN-Lite/
 
 ## 6. Installation & Quick Start
 
-### Step 1: Environment Setup
+### One-Command Launch (Recommended)
 ```bash
-# Clone or navigate to the repository
-cd /home/harish/Music/Meridian-lite
+# Make start script executable (if needed) and run
+chmod +x start.sh
+./start.sh
+```
+This automatically validates the virtual environment, verifies local ONNX weights and disaster datasets, detects GPU/CPU hardware, checks port availability, and launches the dashboard at `http://localhost:8501`.
 
-# Activate virtual environment
+#### Start Script Options:
+```bash
+./start.sh --browser            # Automatically launch and open dashboard in your default browser
+./start.sh --port 8502          # Launch on custom port 8502
+./start.sh --test               # Run full 59-test regression suite before starting dashboard
+./start.sh --help               # View all available CLI options
+```
+
+### Manual Setup & Execution
+```bash
+# 1. Environment Setup
 source .venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
 playwright install chromium
-```
 
-### Step 2: Run Automated Tests
-```bash
-# Run complete test suite (48 tests)
-.venv/bin/python -m pytest -v
+# 2. Run Test Suite (59 tests passing)
+.venv/bin/python -m pytest -q
 
-# Run Stage 1 standalone verification
-.venv/bin/python test_pipeline.py
-
-# Run Stage 2 standalone verification
-.venv/bin/python test_stage2_pipeline.py
-```
-
-### Step 3: Launch Interactive Dashboard
-```bash
+# 3. Launch Dashboard Manually
 .venv/bin/python -m streamlit run app/main.py --server.port 8501
 ```
 Open your browser at `http://localhost:8501`.
