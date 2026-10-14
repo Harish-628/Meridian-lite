@@ -13,12 +13,12 @@
   "image_height": 1024,
   "image_channels": 3,
   "bounding_box": {
-    "min_lon": -85.555,
-    "min_lat": 30.17,
-    "max_lon": -85.545,
-    "max_lat": 30.18,
-    "center_lon": -85.55,
-    "center_lat": 30.175,
+    "min_lon": -85.5501,
+    "min_lat": 30.152997,
+    "max_lon": -85.547337,
+    "max_lat": 30.15576,
+    "center_lon": -85.548719,
+    "center_lat": 30.154378,
     "crs": "EPSG:4326 (WGS84)"
   },
   "damage_classes_in_mask": {

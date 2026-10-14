@@ -22,7 +22,7 @@ from utils.paths import PROJECT_ROOT
 logger = get_logger("real_predict")
 
 METADATA_FILE = PROJECT_ROOT / "data" / "processed" / "dataset_metadata.json"
-DEFAULT_HURRICANE_BOUNDS = (-85.555, 30.170, -85.545, 30.180)
+DEFAULT_HURRICANE_BOUNDS = (-85.550100, 30.152997, -85.547337, 30.155760)
 
 
 def _resolve_bounds(

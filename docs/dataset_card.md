@@ -2,12 +2,12 @@
 
 ## 1. Dataset Summary
 - **Event Name:** Hurricane Michael (Category 5 landfall, October 10, 2018)
-- **Geographic Area:** Mexico Beach, Bay County, Florida, USA
+- **Geographic Area:** Bay County (Panama City / Callaway Area), Florida, USA
 - **Bounding Box (WGS84 EPSG:4326):**
-  - Minimum Longitude: -85.421°
-  - Minimum Latitude: 29.939°
-  - Maximum Longitude: -85.409°
-  - Maximum Latitude: 29.948°
+  - Minimum Longitude: -85.5501°
+  - Minimum Latitude: 30.1530°
+  - Maximum Longitude: -85.5473°
+  - Maximum Latitude: 30.1558°
 - **Primary Imagery Dimensions:** 1024 × 1024 pixels bi-temporal pair
 - **Spatial Resolution (GSD):** ~0.3 meters / pixel (high-resolution aerial orthophotography)
 

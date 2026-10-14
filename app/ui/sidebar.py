@@ -96,13 +96,13 @@ def render_sidebar() -> SidebarConfig:
     if mode == "Real Model Mode":
         center_lat = float(st.sidebar.number_input(
             "Centre Latitude",
-            value=30.1750,
+            value=30.154378,
             format="%.6f",
             help="Target center latitude in decimal degrees.",
         ))
         center_lon = float(st.sidebar.number_input(
             "Centre Longitude",
-            value=-85.5500,
+            value=-85.548719,
             format="%.6f",
             help="Target center longitude in decimal degrees.",
         ))
