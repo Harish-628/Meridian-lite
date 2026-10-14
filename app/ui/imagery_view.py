@@ -20,14 +20,14 @@ def render_imagery_section(
     with img_col1:
         st.caption("**Pre-Disaster Imagery**")
         if pre_path and Path(pre_path).exists():
-            st.image(str(pre_path), use_container_width=True)
+            st.image(str(pre_path), width="stretch")
         else:
             st.info("Pre-disaster image not loaded.")
 
     with img_col2:
         st.caption("**Post-Disaster Imagery**")
         if post_path and Path(post_path).exists():
-            st.image(str(post_path), use_container_width=True)
+            st.image(str(post_path), width="stretch")
         else:
             st.info("Post-disaster image not loaded.")
 
@@ -35,7 +35,7 @@ def render_imagery_section(
         st.caption("**Visual Comparison (Pixel Difference Overlay)**")
         st.caption("*(Visual comparison only — not model segmentation)*")
         if overlay_path and Path(overlay_path).exists():
-            st.image(str(overlay_path), use_container_width=True)
+            st.image(str(overlay_path), width="stretch")
         else:
             st.info("Overlay not yet rendered.")
 

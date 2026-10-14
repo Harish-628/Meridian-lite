@@ -154,7 +154,7 @@ def render_sidebar() -> SidebarConfig:
         )
 
     st.sidebar.markdown("---")
-    run_button = bool(st.sidebar.button("Run AI Damage Assessment", type="primary", use_container_width=True))
+    run_button = bool(st.sidebar.button("Run AI Damage Assessment", type="primary", width="stretch"))
 
     # Hardware and System Diagnostics
     system_health = check_model_health()

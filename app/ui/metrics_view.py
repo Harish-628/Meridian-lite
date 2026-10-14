@@ -116,7 +116,7 @@ def render_priority_zones_section(priority_zones: list[dict[str, Any]]) -> None:
             "Triage Rationale": z["reason"],
         })
     df_zones = pd.DataFrame(pz_rows)
-    st.dataframe(df_zones, use_container_width=True, hide_index=True)
+    st.dataframe(df_zones, width="stretch", hide_index=True)
 
     st.markdown("---")
 
@@ -129,7 +129,7 @@ def render_building_inventory_table(df_results: pd.DataFrame) -> None:
     if not df_results.empty:
         st.dataframe(
             df_results,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
     else:

@@ -38,7 +38,7 @@ def render_export_section(
             data=geojson_str,
             file_name="meridian_damage_assessment.geojson",
             mime="application/geo+json",
-            use_container_width=True,
+            width="stretch",
         )
 
     # 2. Summary JSON export
@@ -49,7 +49,7 @@ def render_export_section(
             data=metrics_str,
             file_name="meridian_summary_metrics.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
         )
 
     # 3. CSV export
@@ -62,7 +62,7 @@ def render_export_section(
             data=csv_str,
             file_name="meridian_building_assessment.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
     # 4. Priority Zones JSON export
@@ -73,7 +73,7 @@ def render_export_section(
             data=priority_zones_str,
             file_name="meridian_priority_zones.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
         )
 
     # 5. Overlay Image export
@@ -87,7 +87,7 @@ def render_export_section(
             data=overlay_bytes,
             file_name="meridian_damage_overlay.png",
             mime="image/png",
-            use_container_width=True,
+            width="stretch",
             disabled=(len(overlay_bytes) == 0),
         )
 
