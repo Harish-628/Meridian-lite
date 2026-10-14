@@ -27,11 +27,15 @@ htmlcov/
 # Outputs & Temporary files (keep directory structure with .gitkeep if needed)
 outputs/overlays/*.png
 outputs/geojson/*.geojson
+outputs/geojson/*.json
 outputs/reports/*.log
 outputs/reports/*.json
 outputs/reports/*.csv
+outputs/reports/*.html
 outputs/temp_uploads/
 outputs/temp_downloads/
+archive/*.log
+archive/temp_downloads/
 
 # Environment and Credentials
 .env
