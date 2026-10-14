@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meridian-lite"
+version = "2.0.0"
+description = "MERIDIAN-Lite: Tactical Disaster Response Decision-Support System"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "MERIDIAN-Lite Engineering Team" }
+]
+keywords = [
+    "disaster-response",
+    "decision-support",
+    "geospatial",
+    "onnx",
+    "computer-vision",
+    "drone-reconnaissance",
+    "triage",
+    "rfc7946"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Emergency Services",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "streamlit>=1.30.0",
+    "folium>=0.15.0",
+    "streamlit-folium>=0.17.0",
+    "geopandas>=0.14.0",
+    "shapely>=2.0.0",
+    "opencv-python-headless>=4.8.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "Pillow>=10.0.0",
+    "pytest>=7.4.0",
+    "onnxruntime>=1.16.0",
+    "onnx>=1.15.0",
+    "playwright>=1.40.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-q --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']

@@ -1,0 +1,3 @@
+"""
+MERIDIAN-Lite Application Package.
+"""

@@ -1,0 +1,47 @@
+{
+  "dataset_name": "DamageTriage-Bench (Hurricane Michael Subset)",
+  "disaster_name": "Hurricane Michael",
+  "disaster_type": "hurricane",
+  "location": "Mexico Beach, Bay County, Florida, USA",
+  "event_date": "2018-10-10",
+  "post_imagery_date": "2018-10-11",
+  "source": "DamageTriage-Bench (Ymx1025/DamageTriage-Bench on Hugging Face) / NOAA Emergency Response Aerial Imagery / Esri World Imagery",
+  "license": "Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0) / NOAA Public Domain",
+  "citation": "DamageTriage-Bench: A Benchmark for Aerial Disaster Building Damage Assessment (2024); NOAA National Geodetic Survey Remote Sensing Division (2018)",
+  "tile_id": "20181011aC0853300w301030n_7_0",
+  "image_width": 1024,
+  "image_height": 1024,
+  "image_channels": 3,
+  "bounding_box": {
+    "min_lon": -85.555,
+    "min_lat": 30.17,
+    "max_lon": -85.545,
+    "max_lat": 30.18,
+    "center_lon": -85.55,
+    "center_lat": 30.175,
+    "crs": "EPSG:4326 (WGS84)"
+  },
+  "damage_classes_in_mask": {
+    "background": [
+      0,
+      0,
+      0
+    ],
+    "undamaged": [
+      0,
+      255,
+      83
+    ],
+    "partial_damage": [
+      255,
+      138,
+      18
+    ],
+    "destroyed": [
+      255,
+      0,
+      0
+    ]
+  },
+  "provenance_note": "Post-disaster aerial imagery captured by NOAA NGS aircraft post Hurricane Michael landfall. Pre-disaster reference provided by Esri high-resolution World Imagery basemap. Ground-truth damage polygons provided by DamageTriage-Bench."
+}

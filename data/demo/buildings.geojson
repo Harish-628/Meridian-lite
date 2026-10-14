@@ -1,0 +1,700 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "system": "MERIDIAN-Lite",
+    "stage": "Stage 1",
+    "model_type": "simulated_xview2_baseline",
+    "is_simulated": true,
+    "seed": 42,
+    "center_lat": 13.0827,
+    "center_lon": 80.2707,
+    "building_count": 18,
+    "is_demo": true
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "building-001",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2672409,
+              13.0785494
+            ],
+            [
+              80.2676739,
+              13.0785494
+            ],
+            [
+              80.2676739,
+              13.0788991
+            ],
+            [
+              80.2672409,
+              13.0788991
+            ],
+            [
+              80.2672409,
+              13.0785494
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "no-damage",
+        "confidence": 0.7874,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-002",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2691394,
+              13.0781697
+            ],
+            [
+              80.2695397,
+              13.0781697
+            ],
+            [
+              80.2695397,
+              13.0785467
+            ],
+            [
+              80.2691394,
+              13.0785467
+            ],
+            [
+              80.2691394,
+              13.0781697
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "no-damage",
+        "confidence": 0.9828,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-003",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2703548,
+              13.0790989
+            ],
+            [
+              80.2706503,
+              13.0790989
+            ],
+            [
+              80.2706503,
+              13.0793448
+            ],
+            [
+              80.2703548,
+              13.0793448
+            ],
+            [
+              80.2703548,
+              13.0790989
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "no-damage",
+        "confidence": 0.8759,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-004",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2724495,
+              13.0786183
+            ],
+            [
+              80.2728524,
+              13.0786183
+            ],
+            [
+              80.2728524,
+              13.0788532
+            ],
+            [
+              80.2724495,
+              13.0788532
+            ],
+            [
+              80.2724495,
+              13.0786183
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "no-damage",
+        "confidence": 0.8379,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-005",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2750422,
+              13.0786473
+            ],
+            [
+              80.2753421,
+              13.0786473
+            ],
+            [
+              80.2753421,
+              13.0789758
+            ],
+            [
+              80.2750422,
+              13.0789758
+            ],
+            [
+              80.2750422,
+              13.0786473
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "minor-damage",
+        "confidence": 0.7611,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-006",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2663046,
+              13.0814957
+            ],
+            [
+              80.2665709,
+              13.0814957
+            ],
+            [
+              80.2665709,
+              13.0819329
+            ],
+            [
+              80.2663046,
+              13.0819329
+            ],
+            [
+              80.2663046,
+              13.0814957
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "destroyed",
+        "confidence": 0.944,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-007",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2682172,
+              13.0811322
+            ],
+            [
+              80.2686383,
+              13.0811322
+            ],
+            [
+              80.2686383,
+              13.0814422
+            ],
+            [
+              80.2682172,
+              13.0814422
+            ],
+            [
+              80.2682172,
+              13.0811322
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "no-damage",
+        "confidence": 0.8688,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-008",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2711912,
+              13.0808079
+            ],
+            [
+              80.2715059,
+              13.0808079
+            ],
+            [
+              80.2715059,
+              13.0811736
+            ],
+            [
+              80.2711912,
+              13.0811736
+            ],
+            [
+              80.2711912,
+              13.0808079
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "no-damage",
+        "confidence": 0.8748,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-009",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2723218,
+              13.0814227
+            ],
+            [
+              80.2728142,
+              13.0814227
+            ],
+            [
+              80.2728142,
+              13.0818165
+            ],
+            [
+              80.2723218,
+              13.0818165
+            ],
+            [
+              80.2723218,
+              13.0814227
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "destroyed",
+        "confidence": 0.9648,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-010",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2752062,
+              13.0814841
+            ],
+            [
+              80.2754784,
+              13.0814841
+            ],
+            [
+              80.2754784,
+              13.0817331
+            ],
+            [
+              80.2752062,
+              13.0817331
+            ],
+            [
+              80.2752062,
+              13.0814841
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "no-damage",
+        "confidence": 0.8281,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-011",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2664256,
+              13.0838997
+            ],
+            [
+              80.2668828,
+              13.0838997
+            ],
+            [
+              80.2668828,
+              13.0841889
+            ],
+            [
+              80.2664256,
+              13.0841889
+            ],
+            [
+              80.2664256,
+              13.0838997
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "no-damage",
+        "confidence": 0.8802,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-012",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2690626,
+              13.0836024
+            ],
+            [
+              80.2693313,
+              13.0836024
+            ],
+            [
+              80.2693313,
+              13.0840492
+            ],
+            [
+              80.2690626,
+              13.0840492
+            ],
+            [
+              80.2690626,
+              13.0836024
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "major-damage",
+        "confidence": 0.7977,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-013",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2710786,
+              13.08344
+            ],
+            [
+              80.2715053,
+              13.08344
+            ],
+            [
+              80.2715053,
+              13.0838222
+            ],
+            [
+              80.2710786,
+              13.0838222
+            ],
+            [
+              80.2710786,
+              13.08344
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "major-damage",
+        "confidence": 0.7678,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-014",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.272239,
+              13.0838635
+            ],
+            [
+              80.2727048,
+              13.0838635
+            ],
+            [
+              80.2727048,
+              13.0842193
+            ],
+            [
+              80.272239,
+              13.0842193
+            ],
+            [
+              80.272239,
+              13.0838635
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "no-damage",
+        "confidence": 0.7653,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-015",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2744902,
+              13.0838065
+            ],
+            [
+              80.2749226,
+              13.0838065
+            ],
+            [
+              80.2749226,
+              13.0841659
+            ],
+            [
+              80.2744902,
+              13.0841659
+            ],
+            [
+              80.2744902,
+              13.0838065
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "destroyed",
+        "confidence": 0.8633,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-016",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2669559,
+              13.0862435
+            ],
+            [
+              80.2673961,
+              13.0862435
+            ],
+            [
+              80.2673961,
+              13.0865838
+            ],
+            [
+              80.2669559,
+              13.0865838
+            ],
+            [
+              80.2669559,
+              13.0862435
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "major-damage",
+        "confidence": 0.8685,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-017",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.268613,
+              13.0867273
+            ],
+            [
+              80.2688694,
+              13.0867273
+            ],
+            [
+              80.2688694,
+              13.0869543
+            ],
+            [
+              80.268613,
+              13.0869543
+            ],
+            [
+              80.268613,
+              13.0867273
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "no-damage",
+        "confidence": 0.9027,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "building-018",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.2707103,
+              13.0864772
+            ],
+            [
+              80.2711872,
+              13.0864772
+            ],
+            [
+              80.2711872,
+              13.0867396
+            ],
+            [
+              80.2707103,
+              13.0867396
+            ],
+            [
+              80.2707103,
+              13.0864772
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "damage_class": "minor-damage",
+        "confidence": 0.9313,
+        "source": "simulated_xview2_baseline",
+        "is_simulated": true,
+        "is_demo": true
+      }
+    }
+  ]
+}

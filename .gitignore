@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Pytest / Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE / OS / Agent tooling
+.vscode/
+.idea/
+.agents/
+*.swp
+*.swo
+.DS_Store
+
+# Outputs & Temporary files (keep directory structure with .gitkeep if needed)
+outputs/overlays/*.png
+outputs/geojson/*.geojson
+outputs/reports/*.log
+outputs/reports/*.json
+outputs/reports/*.csv
+outputs/temp_uploads/
+outputs/temp_downloads/
+
+# Environment and Credentials
+.env
+.env.local
+*.pem
+*.key
+credentials.json
+
+# Large Datasets & Heavy Weights (exclude arbitrary weights, but whitelist essential offline demo & ONNX model)
+models/weights/*.pt
+models/weights/*.pth
+!models/weights/damage_classifier.onnx
+
+# Allow essential sample and benchmark disaster data for offline hackathon execution
+!data/raw/hurricane_michael*
+!data/processed/*
+!data/demo/*
+
