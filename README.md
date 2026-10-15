@@ -23,19 +23,24 @@ MERIDIAN-Lite ingests pre- and post-disaster aerial imagery, runs local computer
 
 ## 3. Scope & Explicit Non-Scope
 
-### In Scope (Stage 1 & Stage 2)
+### In Scope (Stage 1, Stage 2 & Stage 3)
 - Real disaster imagery ingestion (Hurricane Michael Category 5 landfall in Mexico Beach, FL from DamageTriage-Bench / NOAA NGS / Esri).
 - Dual real-model inference backend:
   1. `RealDamageModelBackend`: Bi-temporal ONNX CNN running via `onnxruntime` on CPU ($109 \text{ ms}$ latency).
   2. `ClassicalChangeDetectionBackend`: OpenCV morphological structural difference and edge-preservation filtering ($217 \text{ ms}$ latency).
   3. `SimulatedXView2Backend`: Preserved Stage 1 deterministic baseline.
-- `AffineGeoreferencer`: Converts 2D image pixel space to WGS84 geographic coordinates (`EPSG:4326`).
+- `AffineGeoreferencer`: Converts 2D image pixel space to WGS84 geographic coordinates (`EPSG:4326`), with dynamic auto-bounding and centroid tracking.
+- Four Operational Assessment Modes:
+  1. **Live Drone Recon Stream:** Live optical drone reconnaissance stream with military/SAR viewfinder HUD, 4 telemetry sensor panels, autonomous waypoint search route ($WP\text{-}01 \to WP\text{-}05$), tactical resource allocation matrix, and compound vulnerability risk index.
+  2. **Upload Mode:** Direct neural network and CV inference on arbitrary user-uploaded pre- and post-disaster image pairs.
+  3. **Real Model Mode:** Evaluation on pre-packaged real disaster imagery (Hurricane Michael).
+  4. **Demo Mode:** Deterministic baseline for offline integration checks.
 - Stage 2 Priority-Zone Scoring Engine: Spatial grid partitioning and transparent triage scoring:
   $$\text{Priority Score} = 0.40 \cdot \text{Damage Density} + 0.25 \cdot \text{Severe Damage Ratio} + 0.20 \cdot \text{Total Affected Norm} + 0.15 \cdot \text{Confidence Weight}$$
-- Interactive Folium GIS map with damage polygons, tooltips, popups, transparent priority zone overlays, and rank callout markers.
+- Interactive Folium GIS map with damage polygons, tooltips, popups, transparent priority zone overlays, drone search route lines, and rank callout markers.
 - Downloadable outputs: RFC 7946 GeoJSON, Priority Zones JSON, Building Assessment CSV, and difference overlays.
 - 100% local, offline operation without cloud AI APIs or internet dependencies for core processing.
-- 48 automated pytest unit/integration tests and dual Playwright live browser automation tests.
+- 68 automated pytest unit/integration tests and dual Playwright live browser automation tests.
 
 ### Explicitly Out of Scope
 - No Flutter or mobile applications (desktop/laptop browser dashboard).
@@ -160,7 +165,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
 
-# 2. Run Test Suite (59 tests passing)
+# 2. Run Test Suite (68 tests passing)
 .venv/bin/python -m pytest -q
 
 # 3. Launch Dashboard Manually
@@ -173,19 +178,20 @@ Open your browser at `http://localhost:8501`.
 ## 7. Operational Workflow in Dashboard
 
 1. **Select Assessment Mode:**
+   - **Live Drone Recon Stream:** Real-time drone viewfinder with HUD, sensors, waypoint search routes, resource dispatching, and predictive multi-hazard index.
+   - **Upload Mode:** Direct neural network and CV inference on arbitrary user-uploaded pre- and post-disaster image pairs.
    - **Real Model Mode:** Evaluates genuine Hurricane Michael aerial imagery with ONNX or OpenCV backends.
    - **Demo Mode:** Runs fast deterministic synthetic baseline for integration checks.
-   - **Upload Mode:** Allows operators to supply their own pre/post drone imagery.
 2. **Select Model Backend:**
    - `Real Damage Model (ONNX)` (CPU neural inference)
    - `Classical Change Detection (OpenCV)` (Morphological difference)
    - `Simulated Stage 1 Engine` (Synthetic baseline)
 3. **Execute Assessment:**
-   - Click **Run AI Damage Assessment**.
+   - Click **Run AI Damage Assessment** (or auto-executes upon uploading image pairs).
 4. **Analyze Tactical Intelligence:**
    - **Tactical Assessment Summary:** Building counts, severe damage ratio, average confidence.
    - **Stage 2 Priority Zones:** Ranked table displaying Zone ID, Priority Score, Total/Damaged structures, and Triage Rationale.
-   - **Geospatial Map:** Building footprints colored by damage level (`no-damage`, `minor-damage`, `major-damage`, `destroyed`) with transparent priority zone blocks and rank markers.
+   - **Geospatial Map:** Building footprints colored by damage level (`no-damage`, `minor-damage`, `major-damage`, `destroyed`) with transparent priority zone blocks, drone flight paths, and rank markers.
 5. **Download Outputs:**
    - GeoJSON, Priority Zones JSON, Building CSV, and Overlay PNG.
 

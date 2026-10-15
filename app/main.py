@@ -108,7 +108,37 @@ render_header_banners(mode=cfg.mode, dataset_choice=cfg.dataset_choice, backend_
 # ==========================================
 # INFERENCE EXECUTION HANDLER
 # ==========================================
-if cfg.run_button:
+should_run = cfg.run_button
+
+# Auto-run Demo mode immediately (no button needed)
+if cfg.mode == "Demo mode":
+    if st.session_state.get("active_mode") != "Demo mode" or cfg.run_button:
+        should_run = True
+
+# Auto-run Real Model Mode when dataset changes
+if cfg.mode == "Real Model Mode":
+    current_dataset_key = f"real_mode_{cfg.dataset_choice}_{cfg.backend_choice}"
+    if st.session_state.get("last_real_dataset_key") != current_dataset_key or cfg.run_button:
+        if cfg.dataset_choice != "Upload Custom Real Imagery" or (cfg.uploaded_pre_file and cfg.uploaded_post_file):
+            should_run = True
+            st.session_state["last_real_dataset_key"] = current_dataset_key
+
+# Upload mode: auto-run when new images detected
+if cfg.mode == "Upload mode":
+    if cfg.uploaded_pre_file and cfg.uploaded_post_file:
+        current_pair = (cfg.uploaded_pre_file.name, cfg.uploaded_post_file.name)
+        up_col1, up_col2 = st.columns([3, 1])
+        with up_col1:
+            st.success(f"📁 Imagery Ready: **{cfg.uploaded_pre_file.name}** and **{cfg.uploaded_post_file.name}**")
+        with up_col2:
+            if st.button("🚀 Run AI Assessment", type="primary", key="quick_upload_run"):
+                should_run = True
+        if st.session_state.get("last_uploaded_pair") != current_pair:
+            should_run = True
+    else:
+        st.info("ℹ️ Upload pre-disaster and post-disaster images in the sidebar to execute real damage detection.")
+
+if should_run:
     st.session_state["active_mode"] = cfg.mode
     st.session_state["active_backend"] = cfg.backend_choice
 
@@ -224,9 +254,9 @@ if cfg.run_button:
         if not cfg.uploaded_pre_file or not cfg.uploaded_post_file:
             st.error("❌ Both pre-disaster and post-disaster images are required to execute assessment.")
         else:
-            logger.info("Executing assessment in Upload mode...")
+            logger.info("Executing assessment in Upload mode with real model inference...")
             start_t = time.time()
-            with st.spinner("Validating uploads and executing damage assessment..."):
+            with st.spinner("Analyzing uploaded imagery with real AI neural model and CV pipeline..."):
                 temp_upload_dir = PROJECT_ROOT / "outputs" / "temp_uploads"
                 temp_upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -239,14 +269,33 @@ if cfg.run_button:
                 validate_image(pre_temp_path)
                 validate_image(post_temp_path)
 
-                geojson_result = run_inference(
-                    pre_image_path=pre_temp_path,
-                    post_image_path=post_temp_path,
-                    center_lat=cfg.center_lat,
-                    center_lon=cfg.center_lon,
-                    seed=cfg.seed,
-                    building_count=cfg.building_count,
-                )
+                backend_key = "real_damage_model"
+                if "Classical" in cfg.backend_choice:
+                    backend_key = "classical_change_detection"
+                elif "Simulated" in cfg.backend_choice:
+                    backend_key = "simulated_xview2"
+
+                if backend_key == "simulated_xview2":
+                    geojson_result = run_inference(
+                        pre_image_path=pre_temp_path,
+                        post_image_path=post_temp_path,
+                        center_lat=cfg.center_lat,
+                        center_lon=cfg.center_lon,
+                        seed=cfg.seed,
+                        building_count=cfg.building_count,
+                    )
+                else:
+                    geojson_result = run_real_inference(
+                        pre_image_path=pre_temp_path,
+                        post_image_path=post_temp_path,
+                        center_lat=cfg.center_lat,
+                        center_lon=cfg.center_lon,
+                        confidence_threshold=cfg.confidence_threshold,
+                        max_features=cfg.max_features,
+                        backend_name=backend_key,
+                        bounds=None,
+                        is_custom_upload=True,
+                    )
 
                 _, overlay_p = create_damage_overlay(
                     pre_image_path=pre_temp_path,
@@ -269,8 +318,9 @@ if cfg.run_button:
                 st.session_state["pre_display_path"] = str(pre_temp_path)
                 st.session_state["post_display_path"] = str(post_temp_path)
                 st.session_state["processing_time_ms"] = elapsed_ms
+                st.session_state["last_uploaded_pair"] = (cfg.uploaded_pre_file.name, cfg.uploaded_post_file.name)
 
-            st.toast("Upload assessment completed successfully!", icon="✅")
+            st.toast(f"Upload assessment completed in {elapsed_ms} ms ({len(geojson_result.get('features', []))} buildings detected)!", icon="✅")
 
 # Initialize default view from baseline if empty
 if st.session_state["assessment_results"] is None:
@@ -303,6 +353,17 @@ if cfg.mode == "Live Drone Recon Stream":
         post_image_path=drone_post,
         priority_zones=priority_zones,
         confidence_threshold=cfg.confidence_threshold,
+        video_source_type=cfg.video_source_type,
+        video_file=cfg.video_file,
+        rtsp_url=cfg.rtsp_url,
+        use_webcam=cfg.use_webcam,
+        skip_frames=cfg.skip_frames,
+        max_features=cfg.max_features,
+        center_lat=cfg.center_lat,
+        center_lon=cfg.center_lon,
+        backend_choice=cfg.backend_choice,
+        drone_pre_file=cfg.drone_pre_file,
+        drone_post_file=cfg.drone_post_file,
     )
     map_instance = build_folium_map(geojson_data, priority_zones, cfg.center_lat, cfg.center_lon)
     render_folium_map(map_instance)
@@ -313,6 +374,22 @@ if cfg.mode == "Live Drone Recon Stream":
         df_results=df_results,
         priority_zones=priority_zones,
         overlay_path=st.session_state.get("overlay_path"),
+    )
+elif cfg.mode == "Upload mode" and not (cfg.uploaded_pre_file and cfg.uploaded_post_file) and st.session_state.get("last_uploaded_pair") is None:
+    st.markdown(
+        """
+        <div style="border: 2px dashed #94A3B8; border-radius: 12px; padding: 40px; text-align: center; margin: 24px 0; background: #F8FAFC;">
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">📤</div>
+            <div style="font-size: 1.25rem; font-weight: 600; color: #1E293B; margin-bottom: 8px;">Upload Pre- and Post-Disaster Imagery</div>
+            <div style="font-size: 0.95rem; color: #64748B; max-width: 600px; margin: 0 auto 16px auto;">
+                Use the sidebar file uploaders on the left to upload pre- and post-disaster aerial or drone images. MERIDIAN-Lite will automatically detect structural changes, classify building damage according to EMS-98, and calculate spatial priority zones.
+            </div>
+            <div style="display: inline-block; background: #E2E8F0; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; color: #334155; font-weight: 500;">
+                Supported Formats: PNG, JPG, JPEG · Local Real ONNX AI Inference
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 else:
     render_tactical_summary(metrics, st.session_state.get("processing_time_ms"))

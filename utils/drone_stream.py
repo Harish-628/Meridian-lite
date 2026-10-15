@@ -409,4 +409,7 @@ def process_drone_sector_stream(
         "total_cumulative_detected": len(cumulative_detections),
         "damage_breakdown": breakdown,
         "sector_y_bounds": (y_min, y_max),
+        "inference_ms": round(
+            sum(f.get("properties", {}).get("inference_time_seconds", 0.003) for f in fc.get("features", [])) * 1000 / max(1, len(fc.get("features", []))), 1
+        ),
     }

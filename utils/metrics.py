@@ -88,8 +88,8 @@ def features_to_dataframe(feature_collection: Dict[str, Any]) -> pd.DataFrame:
     features = feature_collection.get("features", [])
 
     for feature in features:
-        feat_id = feature.get("id", "")
         props = feature.get("properties", {})
+        feat_id = feature.get("id") or props.get("feature_id", "")
         geometry = feature.get("geometry", {})
         coords = geometry.get("coordinates", [[]])
 
@@ -107,10 +107,10 @@ def features_to_dataframe(feature_collection: Dict[str, Any]) -> pd.DataFrame:
             "feature_id": feat_id,
             "damage_class": props.get("damage_class", "unknown"),
             "confidence": props.get("confidence", 0.0),
-            "source": props.get("source", "simulated_xview2_baseline"),
+            "source": props.get("source_model") or props.get("backend_name") or props.get("source", "simulated_xview2_baseline"),
             "latitude": center_lat,
             "longitude": center_lon,
-            "is_simulated": props.get("is_simulated", True),
+            "is_simulated": props.get("is_simulated", False),
         })
 
     return pd.DataFrame(records)

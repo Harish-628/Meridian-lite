@@ -31,6 +31,7 @@ def _resolve_bounds(
     center_lat: float | None,
     center_lon: float | None,
     bounds: tuple[float, float, float, float] | None,
+    is_custom_upload: bool = False,
 ) -> AffineGeoreferencer:
     """Determine the appropriate georeferencer for the inference pair."""
     if bounds is not None:
@@ -41,8 +42,19 @@ def _resolve_bounds(
             coordinate_source="georeferenced_bounds",
         )
 
+    # For explicit custom uploads with user-provided center coordinates, prioritize user coordinates
+    if is_custom_upload and center_lat is not None and center_lon is not None:
+        return AffineGeoreferencer.from_center_and_radius(
+            image_width=image_width,
+            image_height=image_height,
+            center_lat=center_lat,
+            center_lon=center_lon,
+            delta_deg=0.0025,
+            coordinate_source="user_bbox_approximation",
+        )
+
     # Check dataset metadata for known dataset bounds first if center matches or is absent
-    if METADATA_FILE.exists():
+    if not is_custom_upload and METADATA_FILE.exists():
         try:
             with open(METADATA_FILE, "r") as f:
                 meta = json.load(f)
@@ -94,6 +106,7 @@ def run_real_inference(
     max_features: int = 500,
     backend_name: str = "real_damage_model",
     bounds: tuple[float, float, float, float] | None = None,
+    is_custom_upload: bool = False,
 ) -> dict[str, Any]:
     """Execute real disaster damage assessment inference on an aerial imagery pair.
 
@@ -106,6 +119,7 @@ def run_real_inference(
         max_features: Maximum number of building features to return.
         backend_name: Name of backend to use ('real_damage_model', 'classical_change_detection', 'simulated_xview2').
         bounds: Optional explicit (min_lon, min_lat, max_lon, max_lat).
+        is_custom_upload: Whether this is a user-uploaded image requiring custom center-radius georeferencing.
 
     Returns:
         RFC 7946 GeoJSON FeatureCollection dict.
@@ -131,6 +145,7 @@ def run_real_inference(
         center_lat=center_lat,
         center_lon=center_lon,
         bounds=bounds,
+        is_custom_upload=is_custom_upload,
     )
 
     # 4. Select backend with graceful fallback

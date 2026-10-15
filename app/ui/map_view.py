@@ -19,8 +19,32 @@ def build_folium_map(
     center_lon: float = -85.548719,
 ) -> folium.Map:
     """Construct an interactive Folium map populated with building polygons and priority zones."""
+    features = geojson_data.get("features", []) if isinstance(geojson_data, dict) else []
+    all_lats: list[float] = []
+    all_lons: list[float] = []
+
+    for f in features:
+        geom = f.get("geometry", {})
+        coords = geom.get("coordinates", [])
+        if geom.get("type") == "Polygon" and coords:
+            for pt in coords[0]:
+                all_lons.append(float(pt[0]))
+                all_lats.append(float(pt[1]))
+        elif geom.get("type") == "MultiPolygon" and coords:
+            for poly in coords:
+                if poly:
+                    for pt in poly[0]:
+                        all_lons.append(float(pt[0]))
+                        all_lats.append(float(pt[1]))
+
+    if all_lats and all_lons:
+        c_lat = float(sum(all_lats) / len(all_lats))
+        c_lon = float(sum(all_lons) / len(all_lons))
+    else:
+        c_lat, c_lon = center_lat, center_lon
+
     m = folium.Map(
-        location=[center_lat, center_lon],
+        location=[c_lat, c_lon],
         zoom_start=16,
         tiles="OpenStreetMap",
         control_scale=True,

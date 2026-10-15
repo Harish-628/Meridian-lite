@@ -121,7 +121,7 @@ class AffineGeoreferencer:
         props.setdefault("coordinate_source", self.coordinate_source)
         props.setdefault("crs", self.crs)
 
-        return {
+        feat_dict: dict[str, Any] = {
             "type": "Feature",
             "geometry": {
                 "type": "Polygon",
@@ -129,6 +129,9 @@ class AffineGeoreferencer:
             },
             "properties": props,
         }
+        if "feature_id" in props and props["feature_id"]:
+            feat_dict["id"] = props["feature_id"]
+        return feat_dict
 
     @classmethod
     def from_center_and_radius(

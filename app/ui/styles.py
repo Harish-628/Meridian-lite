@@ -103,7 +103,17 @@ def render_header_banners(mode: str, dataset_choice: str = "", backend_choice: s
             unsafe_allow_html=True,
         )
     elif mode == "Upload mode":
-        st.info(
-            "ℹ️ **Upload mode enabled:** Supply your own pre- and post-disaster aerial imagery pairs. "
-            "MERIDIAN-Lite will validate resolution compatibility, execute damage assessment, and georeference features."
+        st.markdown(
+            f"""
+            <div style="background-color: #F0FDF4; border: 1.5px solid #22C55E; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+                <span style="background-color: #15803D; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">REAL MODEL UPLOAD INFERENCE</span>
+                <span style="color: #166534; font-weight: 600; margin-left: 10px;">
+                    Active Backend: {backend_choice} &nbsp;|&nbsp; Custom User Imagery
+                </span>
+                <div style="color: #15803D; font-size: 0.88rem; margin-top: 4px;">
+                    Upload custom pre- and post-disaster aerial imagery pairs. MERIDIAN-Lite executes genuine neural network inference, calculates EMS-98 building damage severity, and georeferences spatial polygons.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )

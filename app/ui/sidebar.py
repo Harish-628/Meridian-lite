@@ -3,7 +3,7 @@ Sidebar Control Panel & Parameter Configuration for MERIDIAN-Lite.
 Encapsulates mode selection, backend switching, spatial coordinates, and hardware diagnostics.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 import streamlit as st
 
@@ -27,12 +27,20 @@ class SidebarConfig:
     uploaded_pre_file: Any
     uploaded_post_file: Any
     run_button: bool
+    # Live Drone stream extras
+    video_source_type: str = "Uploaded Video File"
+    video_file: Any = None           # st.UploadedFile for .mp4/.avi/.mov
+    rtsp_url: str = ""
+    use_webcam: bool = False
+    skip_frames: int = 3             # Process every N frames
+    drone_pre_file: Any = None       # Optional pre-disaster reference image for drone mode
+    drone_post_file: Any = None      # Optional post-disaster still for non-video demo
 
 
 def render_sidebar() -> SidebarConfig:
     """Render the sidebar controls and return the active user configuration."""
     st.sidebar.title("MERIDIAN-Lite Command Center")
-    st.sidebar.caption("Stage 2: Multimodal Disaster Analysis & Priority-Zone Intelligence")
+    st.sidebar.caption("Stage 3: Multimodal Disaster Analysis · Priority-Zone Intelligence · Live UAV Processing")
 
     mode = st.sidebar.radio(
         "Assessment Mode",
@@ -41,7 +49,7 @@ def render_sidebar() -> SidebarConfig:
         help="Select Demo mode for rapid testing, Upload mode for custom pairs, Real Model Mode for static disaster inference, or Live Drone Recon Stream for live drone video feed.",
     )
 
-    if mode in ["Real Model Mode", "Live Drone Recon Stream"]:
+    if mode in ["Real Model Mode", "Live Drone Recon Stream", "Upload mode"]:
         backend_choice = st.sidebar.selectbox(
             "Model Backend",
             options=[
@@ -52,27 +60,32 @@ def render_sidebar() -> SidebarConfig:
             index=0,
             help="Select the AI/CV inference backend to execute.",
         )
-        dataset_choice = st.sidebar.selectbox(
-            "Real Disaster Dataset",
-            options=[
-                "Hurricane Michael (Mexico Beach, FL - Oct 2018)",
-                "Upload Custom Real Imagery",
-            ],
-            index=0,
-            help="Select pre-packaged real disaster imagery or upload custom tile.",
-        )
+        if mode == "Upload mode":
+            dataset_choice = "User Uploaded Imagery"
+        elif mode == "Live Drone Recon Stream":
+            dataset_choice = "Live Drone Feed"
+        else:
+            dataset_choice = st.sidebar.selectbox(
+                "Real Disaster Dataset",
+                options=[
+                    "Hurricane Michael (Mexico Beach, FL - Oct 2018)",
+                    "Upload Custom Real Imagery",
+                ],
+                index=0,
+                help="Select pre-packaged real disaster imagery or upload custom tile.",
+            )
         confidence_thresh = float(st.sidebar.slider(
             "Confidence Threshold",
-            min_value=0.20,
+            min_value=0.10,
             max_value=0.90,
-            value=0.35,
+            value=0.30,
             step=0.05,
             help="Filter predictions by minimum model confidence score.",
         ))
         max_feat = int(st.sidebar.slider(
             "Maximum Building Features",
             min_value=10,
-            max_value=200,
+            max_value=300,
             value=100,
             step=10,
             help="Maximum building footprints to retain.",
@@ -93,7 +106,7 @@ def render_sidebar() -> SidebarConfig:
     st.sidebar.markdown("---")
     st.sidebar.subheader("Spatial & Model Parameters")
 
-    if mode in ["Real Model Mode", "Live Drone Recon Stream"]:
+    if mode in ["Real Model Mode", "Live Drone Recon Stream", "Upload mode"]:
         center_lat = float(st.sidebar.number_input(
             "Centre Latitude",
             value=30.154378,
@@ -136,7 +149,7 @@ def render_sidebar() -> SidebarConfig:
             help="Number of building structures to assess (clamped to 15-20).",
         ))
 
-    # Upload Handlers
+    # ---- Upload Handlers ----
     uploaded_pre_file = None
     uploaded_post_file = None
     if mode == "Upload mode" or (mode == "Real Model Mode" and dataset_choice == "Upload Custom Real Imagery"):
@@ -152,6 +165,66 @@ def render_sidebar() -> SidebarConfig:
             type=["png", "jpg", "jpeg"],
             help="Upload post-event imagery covering the same target area.",
         )
+
+    # ---- Live Drone Recon Stream Controls ----
+    video_source_type = "Uploaded Video File"
+    video_file = None
+    rtsp_url = ""
+    use_webcam = False
+    skip_frames = 3
+    drone_pre_file = None
+    drone_post_file = None
+
+    if mode == "Live Drone Recon Stream":
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🎥 Video Input Source")
+        video_source_type = st.sidebar.selectbox(
+            "Stream Source",
+            options=[
+                "Uploaded Video File",
+                "Webcam (Live)",
+                "RTSP/HTTP Stream URL",
+                "Pre/Post Image Pair",
+            ],
+            index=0,
+            help="Choose how to feed video frames into the AI pipeline.",
+        )
+
+        if video_source_type == "Uploaded Video File":
+            video_file = st.sidebar.file_uploader(
+                "Upload Drone Video",
+                type=["mp4", "avi", "mov", "mkv", "webm"],
+                help="Upload any drone/aerial video file. The AI will process it frame by frame.",
+            )
+        elif video_source_type == "Webcam (Live)":
+            use_webcam = True
+            st.sidebar.info("📷 Webcam stream will be captured from device 0.")
+        elif video_source_type == "RTSP/HTTP Stream URL":
+            rtsp_url = st.sidebar.text_input(
+                "Stream URL",
+                placeholder="rtsp://192.168.1.100:554/stream or http://...",
+                help="Enter RTSP or HTTP video stream URL from drone GCS.",
+            )
+        elif video_source_type == "Pre/Post Image Pair":
+            drone_pre_file = st.sidebar.file_uploader(
+                "Pre-disaster Reference Image",
+                type=["png", "jpg", "jpeg"],
+                key="drone_pre_up",
+                help="Upload a pre-disaster reference image for the drone HUD.",
+            )
+            drone_post_file = st.sidebar.file_uploader(
+                "Post-disaster / Live Frame Image",
+                type=["png", "jpg", "jpeg"],
+                key="drone_post_up",
+                help="Upload post-disaster or current drone frame for AI analysis.",
+            )
+
+        skip_frames = int(st.sidebar.select_slider(
+            "Frame Processing Rate",
+            options=[1, 2, 3, 5, 8, 10, 15, 20],
+            value=3,
+            help="Process every Nth video frame. Lower = higher accuracy, higher = faster throughput.",
+        ))
 
     st.sidebar.markdown("---")
     run_button = bool(st.sidebar.button("Run AI Damage Assessment", type="primary", width="stretch"))
@@ -191,4 +264,11 @@ def render_sidebar() -> SidebarConfig:
         uploaded_pre_file=uploaded_pre_file,
         uploaded_post_file=uploaded_post_file,
         run_button=run_button,
+        video_source_type=video_source_type,
+        video_file=video_file,
+        rtsp_url=rtsp_url,
+        use_webcam=use_webcam,
+        skip_frames=skip_frames,
+        drone_pre_file=drone_pre_file,
+        drone_post_file=drone_post_file,
     )
