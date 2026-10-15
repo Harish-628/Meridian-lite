@@ -248,3 +248,179 @@ def create_demo_images(
     logger.info(f"Synthetic post-disaster image saved to: {post_path}")
 
     return pre_path, post_path
+
+
+def create_tactical_detection_overlay(
+    post_image_path: str | Path,
+    feature_collection: dict[str, Any],
+    priority_zones: list[dict[str, Any]],
+    output_path: str | Path | None = None,
+) -> Tuple[np.ndarray, Path]:
+    """Render a tactical detection map overlay directly onto the post-disaster image pixels.
+
+    Draws:
+    1. Every detected building footprint in EMS-98 colors (Red/Orange/Yellow/Green) with ID tags.
+    2. Spatial priority zone grid cells with zone IDs and ranks.
+    3. Prominent '🚨 RESCUE FIRST' red tactical targeting highlight over the Rank #1 priority zone.
+    4. Tactical military HUD framing, corner brackets, and mission status banners.
+    """
+    logger.info("Generating tactical optical detection map overlay...")
+    post_img = load_image(post_image_path)
+    h, w = post_img.shape[:2]
+    canvas = cv2.cvtColor(post_img, cv2.COLOR_RGB2BGR)
+
+    # EMS-98 BGR colors
+    ems_colors = {
+        "destroyed": (40, 40, 220),       # Red
+        "major-damage": (20, 126, 253),   # Orange
+        "minor-damage": (7, 193, 255),    # Yellow
+        "no-damage": (69, 167, 40),       # Green
+    }
+
+    # Extract all feature points to determine georeferencing scale
+    features = feature_collection.get("features", [])
+    all_lons: list[float] = []
+    all_lats: list[float] = []
+    for feat in features:
+        for ring in feat.get("geometry", {}).get("coordinates", []):
+            for pt in ring:
+                all_lons.append(float(pt[0]))
+                all_lats.append(float(pt[1]))
+
+    if all_lons and all_lats:
+        min_lon, max_lon = min(all_lons), max(all_lons)
+        min_lat, max_lat = min(all_lats), max(all_lats)
+        # Add slight margin to avoid zero-division
+        d_lon = max_lon - min_lon if max_lon != min_lon else 0.001
+        d_lat = max_lat - min_lat if max_lat != min_lat else 0.001
+
+        def to_px(lon: float, lat: float) -> tuple[int, int]:
+            px = int(((lon - min_lon) / d_lon) * (w - 40) + 20)
+            py = int(((max_lat - lat) / d_lat) * (h - 40) + 20)
+            return max(0, min(w - 1, px)), max(0, min(h - 1, py))
+    else:
+        def to_px(lon: float, lat: float) -> tuple[int, int]:
+            return w // 2, h // 2
+
+    # 1. Draw Priority Zone Grid Overlays
+    if priority_zones:
+        top_zone = priority_zones[0]
+        top_zone_id = top_zone.get("zone_id", "Z-001")
+
+        # Determine grid dimensions from count
+        grid_count = len(priority_zones)
+        grid_rows = int(grid_count**0.5) if int(grid_count**0.5)**2 == grid_count else 3
+        grid_cols = grid_count // grid_rows if grid_rows > 0 else 3
+
+        cell_w = w // max(1, grid_cols)
+        cell_h = h // max(1, grid_rows)
+
+        # Draw grid lines
+        grid_overlay = canvas.copy()
+        for r in range(grid_rows + 1):
+            y = min(h - 1, r * cell_h)
+            cv2.line(grid_overlay, (0, y), (w, y), (180, 220, 240), 1)
+        for c in range(grid_cols + 1):
+            x = min(w - 1, c * cell_w)
+            cv2.line(grid_overlay, (x, 0), (x, h), (180, 220, 240), 1)
+        cv2.addWeighted(grid_overlay, 0.40, canvas, 0.60, 0, canvas)
+
+        # Highlight Rank #1 Zone (RESCUE FIRST)
+        for idx, z in enumerate(priority_zones):
+            rank = z.get("priority_rank", idx + 1)
+            zid = z.get("zone_id", f"Z-{idx+1:03d}")
+            r_idx = idx // grid_cols
+            c_idx = idx % grid_cols
+            zx0 = c_idx * cell_w
+            zy0 = r_idx * cell_h
+            zx1 = min(w, (c_idx + 1) * cell_w)
+            zy1 = min(h, (r_idx + 1) * cell_h)
+
+            if rank == 1 or zid == top_zone_id:
+                # Strong red semi-transparent overlay for first rescue area
+                rescue_overlay = canvas.copy()
+                cv2.rectangle(rescue_overlay, (zx0, zy0), (zx1, zy1), (30, 30, 220), -1)
+                cv2.addWeighted(rescue_overlay, 0.28, canvas, 0.72, 0, canvas)
+
+                # Bright tactical red boundary + target corners
+                cv2.rectangle(canvas, (zx0, zy0), (zx1, zy1), (40, 40, 240), 3)
+                t_len = min(30, cell_w // 4)
+                for (cx, cy, cdx, cdy) in [
+                    (zx0, zy0, 1, 1), (zx1, zy0, -1, 1),
+                    (zx0, zy1, 1, -1), (zx1, zy1, -1, -1)
+                ]:
+                    cv2.line(canvas, (cx, cy), (cx + cdx * t_len, cy), (0, 255, 255), 4)
+                    cv2.line(canvas, (cx, cy), (cx, cy + cdy * t_len), (0, 255, 255), 4)
+
+                # Center target reticle
+                rcx, rcy = (zx0 + zx1) // 2, (zy0 + zy1) // 2
+                cv2.circle(canvas, (rcx, rcy), 18, (0, 255, 255), 2)
+                cv2.drawMarker(canvas, (rcx, rcy), (0, 255, 255), cv2.MARKER_CROSS, 28, 2)
+
+                # Label tag
+                tag = f"RESCUE FIRST: {zid} (Rank #1)"
+                (tw, th), _ = cv2.getTextSize(tag, cv2.FONT_HERSHEY_SIMPLEX, 0.50, 2)
+                cv2.rectangle(canvas, (zx0 + 6, zy0 + 6), (zx0 + tw + 18, zy0 + th + 16), (40, 40, 240), -1)
+                cv2.putText(canvas, tag, (zx0 + 12, zy0 + th + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+            else:
+                # Normal zone tag
+                z_tag = f"{zid} (Rank #{rank})"
+                cv2.putText(canvas, z_tag, (zx0 + 8, zy0 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (200, 230, 255), 1, cv2.LINE_AA)
+
+    # 2. Draw Detected Building Footprints & EMS-98 Labels
+    for feat in features:
+        props = feat.get("properties", {})
+        dmg = props.get("damage_class", props.get("damage", "no-damage"))
+        conf = float(props.get("confidence", 0.5))
+        bld_id = props.get("feature_id", "BLD")
+        color = ems_colors.get(dmg, (200, 200, 200))
+
+        ring = feat.get("geometry", {}).get("coordinates", [[]])[0]
+        if len(ring) >= 3:
+            pts = np.array([to_px(pt[0], pt[1]) for pt in ring], np.int32)
+            cv2.polylines(canvas, [pts], isClosed=True, color=color, thickness=2)
+
+            # Bounding box of the polygon
+            bx0, by0, bw, bh = cv2.boundingRect(pts)
+            # Corner accents
+            al = min(8, max(3, bw // 3))
+            cv2.line(canvas, (bx0, by0), (bx0 + al, by0), color, 2)
+            cv2.line(canvas, (bx0, by0), (bx0, by0 + al), color, 2)
+            cv2.line(canvas, (bx0 + bw, by0), (bx0 + bw - al, by0), color, 2)
+            cv2.line(canvas, (bx0 + bw, by0), (bx0 + bw, by0 + al), color, 2)
+
+            # Tiny label
+            short_lbl = f"{bld_id[:7]} {dmg[:3].upper()}"
+            cv2.putText(canvas, short_lbl, (bx0, max(12, by0 - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.32, color, 1, cv2.LINE_AA)
+
+    # 3. Tactical Military Corner Brackets
+    L = 35
+    tac_color = (0, 240, 210)  # Cyan
+    for (px, py, dx, dy) in [(15, 15, 1, 1), (w - 15, 15, -1, 1), (15, h - 15, 1, -1), (w - 15, h - 15, -1, -1)]:
+        cv2.line(canvas, (px, py), (px + dx * L, py), tac_color, 2)
+        cv2.line(canvas, (px, py), (px, py + dy * L), tac_color, 2)
+
+    # 4. Top/Bottom HUD Banners
+    hud_bg = canvas.copy()
+    cv2.rectangle(hud_bg, (0, 0), (w, 38), (15, 23, 42), -1)
+    cv2.rectangle(hud_bg, (0, h - 34), (w, h), (15, 23, 42), -1)
+    cv2.addWeighted(hud_bg, 0.75, canvas, 0.25, 0, canvas)
+
+    cv2.putText(
+        canvas,
+        f"MERIDIAN TACTICAL OPTICAL MAPPING · {len(features)} STRUCTURES DETECTED · REAL AI ANALYSIS",
+        (14, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (0, 240, 210), 1, cv2.LINE_AA
+    )
+    cv2.putText(
+        canvas,
+        "RED: DESTROYED  |  ORANGE: MAJOR  |  YELLOW: MINOR  |  GREEN: UNDAMAGED  |  TARGET: FIRST RESCUE SECTOR",
+        (14, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (255, 255, 255), 1, cv2.LINE_AA
+    )
+
+    out_rgb = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
+    out_target = Path(output_path) if output_path else DEFAULT_OVERLAY_OUTPUT.parent / "tactical_detection_map.png"
+    out_target.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(out_target), canvas)
+    logger.info(f"Tactical detection map overlay saved to: {out_target}")
+
+    return out_rgb, out_target

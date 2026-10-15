@@ -19,6 +19,7 @@ from utils.georeferencing import AffineGeoreferencer
 from utils.image_utils import (
     create_damage_overlay,
     create_demo_images,
+    create_tactical_detection_overlay,
     image_dimensions,
     load_image,
     validate_image,
@@ -53,6 +54,7 @@ __all__ = [
     "AffineGeoreferencer",
     "create_damage_overlay",
     "create_demo_images",
+    "create_tactical_detection_overlay",
     "image_dimensions",
     "get_image_dimensions",
     "load_image",

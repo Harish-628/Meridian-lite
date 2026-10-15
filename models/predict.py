@@ -36,6 +36,7 @@ def run_inference(
     center_lon: float,
     seed: int = 42,
     building_count: int = 18,
+    **kwargs: Any,
 ) -> Dict[str, Any]:
     """
     Run simulated damage assessment across an aerial image pair.

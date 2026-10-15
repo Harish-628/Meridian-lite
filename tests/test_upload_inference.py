@@ -85,4 +85,34 @@ def test_upload_mode_dataframe_and_metrics(sample_upload_images):
     assert "feature_id" in df.columns
     assert "is_simulated" in df.columns
     assert df["feature_id"].iloc[0] != ""
-    assert df["is_simulated"].iloc[0] == False
+    assert bool(df["is_simulated"].iloc[0]) is False
+
+
+def test_upload_mode_app_ui_no_sliders_and_real_model(sample_upload_images):
+    """Verify that in the actual Streamlit app, Upload mode does not show building count slider and auto-runs real ONNX."""
+    from streamlit.testing.v1 import AppTest
+    from utils.paths import PROJECT_ROOT
+
+    pre_path, post_path = sample_upload_images
+    pre_bytes = pre_path.read_bytes()
+    post_bytes = post_path.read_bytes()
+
+    app_path = str(PROJECT_ROOT / "app" / "main.py")
+    at = AppTest.from_file(app_path)
+
+    at.run(timeout=10)
+    at.sidebar.radio[0].set_value("Upload mode").run(timeout=10)
+
+    # In Upload mode, there should be NO 'Demo Building Count' or 'Building Count' slider
+    slider_labels = [s.label for s in at.sidebar.slider]
+    assert "Building Count" not in slider_labels
+    assert "Demo Building Count" not in slider_labels
+    assert "Random Seed" not in [n.label for n in at.sidebar.number_input]
+
+    # Upload files and verify automatic execution
+    at.sidebar.file_uploader[0].set_value([("pre.png", pre_bytes, "image/png")]).run(timeout=10)
+    at.sidebar.file_uploader[1].set_value([("post.png", post_bytes, "image/png")]).run(timeout=15)
+
+    assert len(at.exception) == 0
+    banners = [m.value for m in at.markdown if "STRUCTURES DETECTED" in m.value or "Real AI Model Analysis" in m.value]
+    assert len(banners) > 0

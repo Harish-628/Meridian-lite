@@ -43,14 +43,10 @@ archive/temp_downloads/
 *.pem
 *.key
 credentials.json
+*.pyc
 
-# Large Datasets & Heavy Weights (exclude arbitrary weights, but whitelist essential offline demo & ONNX model)
-models/weights/*.pt
-models/weights/*.pth
-!models/weights/damage_classifier.onnx
-
-# Allow essential sample and benchmark disaster data for offline hackathon execution
-!data/raw/hurricane_michael*
-!data/processed/*
-!data/demo/*
+# Raw Datasets & Heavy Weights
+data/raw/
+models/weights/
+outputs/temp_downloads/
 

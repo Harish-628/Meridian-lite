@@ -107,6 +107,7 @@ def run_real_inference(
     backend_name: str = "real_damage_model",
     bounds: tuple[float, float, float, float] | None = None,
     is_custom_upload: bool = False,
+    **kwargs: Any,
 ) -> dict[str, Any]:
     """Execute real disaster damage assessment inference on an aerial imagery pair.
 

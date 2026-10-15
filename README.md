@@ -199,7 +199,10 @@ Open your browser at `http://localhost:8501`.
 
 ## 8. Provenance & Technical Disclosures
 
-- **Dataset:** Hurricane Michael (October 2018, Mexico Beach, FL) from DamageTriage-Bench (CC BY-NC 4.0), NOAA NGS aerial imagery, and Esri World Imagery.
-- **Model Truthfulness & Architecture:** The ONNX backend performs real local neural-network inference, but it is a lightweight locally implemented bi-temporal model. It is not a large pretrained xView2/xBD checkpoint. Therefore, do not describe it as a pretrained xView2 model.
-- **Inference Hardware:** Executed locally on CPU (Intel/AMD x86_64, 16 cores) via `onnxruntime` and OpenCV. No GPU or external cloud connectivity required.
+- **Dataset:** Hurricane Michael (October 2018, Mexico Beach, FL) from DamageTriage-Bench (CC BY-NC 4.0), NOAA NGS aerial imagery, and Esri World Imagery used exclusively as evaluation test tiles.
+- **Model Truthfulness & Architecture:** The current MERIDIAN-Lite ONNX model is a lightweight local damage classifier. Its model-file format and successful inference do not by themselves prove that it is an officially pretrained xBD/xView2 checkpoint. Pretrained status is marked as not independently verified until training provenance is documented.
+- **Formal Provenance Classification:** `Model provenance not independently verified` (Hand-parameterized demonstration CNN for offline pipeline testing).
+- **Model Checksum (SHA-256):** `bda9515c3a3c431abf46a8792e20ff131c09aa6d23a1e54c387d344c9a05f753` (23.5 KB, Opset 14).
+- **Model Card & Audits:** See [`docs/model_card.md`](docs/model_card.md), [`outputs/reports/model_provenance_audit.json`](outputs/reports/model_provenance_audit.json), and [`docs/model_selection_decision.md`](docs/model_selection_decision.md).
+- **Inference Hardware:** Executed locally on CPU via `onnxruntime` (`CPUExecutionProvider` SIMD fallback) and OpenCV. No GPU or external cloud connectivity required.
 - **Air-Gapped Operation:** All model inference, geospatial processing, and exports function 100% offline.

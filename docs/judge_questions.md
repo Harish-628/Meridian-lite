@@ -4,14 +4,29 @@ This document provides transparent, technically precise answers for hackathon ev
 
 ---
 
-### 1. Is this actually running a real model or is it simulated?
-**Both options are available, explicitly distinguished in the UI:**
-- In **Real Model Mode**, MERIDIAN-Lite executes a **real computer vision / ML model pipeline**:
-  1. A lightweight bi-temporal ONNX convolutional neural network (`models/weights/damage_classifier.onnx`) running via `onnxruntime` on CPU ($109 \text{ ms}$ latency), classifying building features into 4 damage tiers: `no-damage`, `minor-damage`, `major-damage`, and `destroyed`.
-     > **Truthful Disclosure:** The ONNX backend performs real local neural-network inference, but it is a lightweight locally implemented bi-temporal model. It is not a large pretrained xView2/xBD checkpoint. Therefore, do not describe it as a pretrained xView2 model.
-  2. A classical OpenCV structural change detection pipeline using Otsu adaptive thresholding and Canny structural edge preservation analysis ($217 \text{ ms}$ latency).
-- In **Demo Mode**, the system preserves the Stage 1 deterministic simulation baseline so judges and developers can compare real inference outputs against synthetic baselines.
-- The UI features a prominent blue badge (`REAL MODEL INFERENCE OUTPUT`) and an amber badge (`SIMULATED STAGE 1 OUTPUT`) so judges and users are never misled.
+### 1. Is this model pretrained?
+**No. Pretrained status is marked as not independently verified.**
+The current MERIDIAN-Lite ONNX model is a lightweight local damage classifier. Its model-file format and successful inference do not by themselves prove that it is an officially pretrained xBD/xView2 checkpoint. Pretrained status is marked as not independently verified until training provenance is documented.
+
+It is an internally synthesized, hand-parameterized 2-layer convolutional neural network (23.5 KB) designed for offline pipeline testing and bi-temporal change classification. It executes real local neural network inference on CPU via ONNX Runtime, but it is not an official checkpoint trained via stochastic gradient descent on xBD.
+
+---
+
+### 1b. What data was it trained on? Can you prove it?
+**None.** Technical inspection of the ONNX weight initializers reveals that the convolutional filters are analytical spatial difference kernels ($-1/27$ on pre-disaster channels, $+1/27$ on post-disaster channels) paired with Laplacian edge detectors. No training dataset was used, which also guarantees **zero training/test data leakage** when evaluating test tiles. All details are formally documented in [`outputs/reports/model_provenance_audit.json`](../outputs/reports/model_provenance_audit.json) and [`docs/model_card.md`](model_card.md).
+
+---
+
+### 1c. Why did you choose this model instead of a larger pretrained checkpoint?
+We conducted a formal candidate evaluation against the xView2 Baseline (U-Net Siamese ResNet-50, 195 MB, 51.2M parameters) and RescueNet (44.8 MB) — documented in [`outputs/reports/model_comparison.json`](../outputs/reports/model_comparison.json) and [`docs/model_selection_decision.md`](model_selection_decision.md):
+1. **Zero External Dependency & Python 3.14 Compatibility:** PyTorch currently lacks pre-built wheels for Python 3.14, whereas our ONNX model executes natively with zero external C++ build issues.
+2. **Deterministic Offline Execution (<120 ms):** The lightweight model processes 58 candidate building patches in 113.4 ms on CPU SIMD with <35 MB RAM, compared to ~4,800 ms and 1.45 GB RAM for a 50M parameter U-Net.
+3. **Transparency over False Claims:** Rather than downloading unverified third-party checkpoints and claiming they are official xBD models, we maintain full transparency with clear labeling: *"Verified Local ONNX Model (Lightweight Demonstration CNN)"*.
+
+---
+
+### 1d. What happens if the network is disconnected?
+**100% of the system continues to work.** MERIDIAN-Lite is fully air-gapped. The ONNX inference runtime, classical OpenCV fallbacks, geospatial affine coordinate projection, priority-zone calculations, and data exporters (GeoJSON/CSV/JSON) execute locally on CPU without making any network calls. If internet tiles cannot load, Folium renders all geospatial polygons and tactical markers on an offline fallback canvas.
 
 ---
 

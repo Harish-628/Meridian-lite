@@ -71,12 +71,12 @@ def render_header_banners(mode: str, dataset_choice: str = "", backend_choice: s
         st.markdown(
             f"""
             <div style="background-color: #EFF6FF; border: 1.5px solid #3B82F6; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
-                <span class="badge-real-mode">REAL MODEL INFERENCE OUTPUT</span>
+                <span class="badge-real-mode">Real Model Inference: local ONNX execution</span>
                 <span style="color: #1E3A8A; font-weight: 600; margin-left: 10px;">
                     Active Backend: {backend_choice} &nbsp;|&nbsp; Sector: {dataset_choice}
                 </span>
                 <div style="color: #3B82F6; font-size: 0.88rem; margin-top: 4px;">
-                    Verified real disaster aerial reconnaissance (Hurricane Michael, Mexico Beach, FL). Local CPU neural/CV execution without external cloud dependencies.
+                    Verified Local ONNX Model (bda9515c) · CPU SIMD Execution. Model Provenance Not Independently Verified (Demonstration CNN).
                 </div>
             </div>
             """,
@@ -84,8 +84,8 @@ def render_header_banners(mode: str, dataset_choice: str = "", backend_choice: s
         )
     elif mode == "Demo mode":
         st.warning(
-            "⚠️ **Demo mode uses simulated imagery and simulated damage output for rapid testing and verification.** "
-            "To evaluate genuine disaster drone footage with real neural network inference, switch to **Real Model Mode** in the sidebar."
+            "⚠️ **Demo Simulation: deterministic synthetic output.** "
+            "To evaluate genuine disaster drone imagery with local neural network inference, switch to **Real Model Mode** or **Upload mode** in the sidebar."
         )
     elif mode == "Live Drone Recon Stream":
         st.markdown(
@@ -96,7 +96,7 @@ def render_header_banners(mode: str, dataset_choice: str = "", backend_choice: s
                     UAV-SAR-01 Optical Datalink Active &nbsp;|&nbsp; Local ONNX Real-Time Neural Inference
                 </span>
                 <div style="color: #94A3B8; font-size: 0.88rem; margin-top: 4px;">
-                    Real-time aerial surveillance of Hurricane Michael disaster sector (Callaway, FL). Progressive drone waypoint scanning, live sensor telemetry, HUD bounding boxes, and tactical resource allocation.
+                    Real Model Inference: local ONNX execution. Progressive drone waypoint scanning, live sensor telemetry, HUD bounding boxes, and tactical resource allocation.
                 </div>
             </div>
             """,
@@ -106,12 +106,12 @@ def render_header_banners(mode: str, dataset_choice: str = "", backend_choice: s
         st.markdown(
             f"""
             <div style="background-color: #F0FDF4; border: 1.5px solid #22C55E; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
-                <span style="background-color: #15803D; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">REAL MODEL UPLOAD INFERENCE</span>
+                <span style="background-color: #15803D; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">Real Model Inference: local ONNX execution</span>
                 <span style="color: #166534; font-weight: 600; margin-left: 10px;">
                     Active Backend: {backend_choice} &nbsp;|&nbsp; Custom User Imagery
                 </span>
                 <div style="color: #15803D; font-size: 0.88rem; margin-top: 4px;">
-                    Upload custom pre- and post-disaster aerial imagery pairs. MERIDIAN-Lite executes genuine neural network inference, calculates EMS-98 building damage severity, and georeferences spatial polygons.
+                    Upload custom pre- and post-disaster aerial imagery pairs. MERIDIAN-Lite executes genuine local neural network inference (bda9515c), calculates EMS-98 building damage severity, and georeferences spatial polygons.
                 </div>
             </div>
             """,
