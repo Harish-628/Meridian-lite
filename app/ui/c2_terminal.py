@@ -77,15 +77,15 @@ def render_c2_split_terminal(
             <div style="background: #022c22; border: 1.5px solid #10b981; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="color: #6ee7b7; font-weight: 800; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.8px;">
-                        ✓ Official xBD Challenge Benchmark
+                        ✓ DamageTriage-Bench (Hurricane Michael)
                     </span>
                     <span style="background: #065f46; color: #a7f3d0; font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; font-weight: 700;">
-                        F1: 0.864
+                        Acc: 77.8%
                     </span>
                 </div>
                 <div style="font-size: 0.82rem; color: #d1fae5; margin-top: 4px; line-height: 1.4;">
                     Dataset: <b>Hurricane Michael (Mexico Beach, FL)</b><br>
-                    Model: <b>Real Dual-Feed Bi-Temporal ONNX CNN</b> (119.5 ms CPU)
+                    Model: <b>Lightweight Bi-Temporal ONNX CNN Baseline</b> (119.5 ms CPU)
                 </div>
             </div>
             """,

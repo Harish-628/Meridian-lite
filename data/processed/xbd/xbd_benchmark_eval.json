@@ -1,25 +1,22 @@
 {
-  "benchmark": "Official xBD Challenge Benchmark (xView2 / DIU)",
+  "benchmark": "DamageTriage-Bench (Hurricane Michael Subset)",
   "disaster_theater": "Hurricane Michael (Mexico Beach, FL)",
-  "total_evaluated_structures": 58,
-  "ground_truth_structures": 58,
+  "total_evaluated_pixels": 1048576,
+  "ground_truth_structures_present": 58,
   "metrics": {
-    "building_localization_f1": 0.864,
-    "damage_classification_f1": 0.792,
-    "overall_accuracy": 0.894,
-    "mean_iou": 0.741,
-    "per_class_f1": {
-      "no-damage": 0.875,
-      "minor-damage": 0.714,
-      "major-damage": 0.769,
-      "destroyed": 0.88
-    }
+    "pixel_accuracy": 0.7781,
+    "precision": 0.1304,
+    "recall": 0.1034,
+    "f1_score": 0.1154,
+    "mean_iou": 0.0612
   },
   "runtime_benchmark": {
-    "model_architecture": "Bi-Temporal Dual-Stream CNN",
+    "model_architecture": "Lightweight Bi-Temporal ONNX CNN (Baseline)",
     "format": "ONNX (Opset 14, IR v10)",
+    "model_size_kb": 23.5,
     "execution_provider": "CPUExecutionProvider",
     "mean_inference_latency_ms": 119.5,
     "hardware_target": "Air-gapped CPU (Zero GPU dependency)"
-  }
+  },
+  "disclosure": "The current model is a verified lightweight baseline evaluated at the pixel level. It is intentionally deployed to demonstrate the end-to-end C2 routing and prioritization pipeline rather than State-of-the-Art segmentation accuracy."
 }
