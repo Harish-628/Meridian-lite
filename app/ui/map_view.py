@@ -124,6 +124,34 @@ def build_folium_map(
 
         zone_fg.add_to(m)
 
+    # Add Stage 2 Autonomous Drone Search Route Layer
+    from utils.drone_stream import MISSION_WAYPOINTS
+    route_fg = folium.FeatureGroup(name="Stage 2 Drone Search Route", show=True)
+    route_coords = [[wp.lat, wp.lon] for wp in MISSION_WAYPOINTS]
+    folium.PolyLine(
+        locations=route_coords,
+        color="#0284c7",
+        weight=3.5,
+        dash_array="8, 8",
+        tooltip="Autonomous UAV-SAR Search Route (North-to-South)",
+    ).add_to(route_fg)
+
+    for wp in MISSION_WAYPOINTS:
+        wp_html = (
+            f'<div style="font-size: 8.5pt; font-weight: bold; color: #0284c7; '
+            f'background: rgba(255, 255, 255, 0.92); padding: 1px 5px; border-radius: 3px; '
+            f'border: 1px solid #0284c7; white-space: nowrap; box-shadow: 1px 1px 2px rgba(0,0,0,0.2);">'
+            f'✈️ {wp.waypoint_id}'
+            f'</div>'
+        )
+        folium.Marker(
+            location=[wp.lat, wp.lon],
+            icon=folium.DivIcon(html=wp_html),
+            tooltip=f"{wp.waypoint_id}: {wp.sector_name} (Alt: {wp.altitude_m:.0f}m, Spd: {wp.speed_mps:.0f}m/s)",
+        ).add_to(route_fg)
+
+    route_fg.add_to(m)
+
     folium.LayerControl().add_to(m)
 
     # Fit map bounds to encompass all detected building footprints

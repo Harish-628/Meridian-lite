@@ -36,12 +36,12 @@ def render_sidebar() -> SidebarConfig:
 
     mode = st.sidebar.radio(
         "Assessment Mode",
-        options=["Demo mode", "Upload mode", "Real Model Mode"],
+        options=["Demo mode", "Upload mode", "Real Model Mode", "Live Drone Recon Stream"],
         index=0,
-        help="Select Demo mode for rapid testing, Upload mode for custom pairs, or Real Model Mode for real disaster inference.",
+        help="Select Demo mode for rapid testing, Upload mode for custom pairs, Real Model Mode for static disaster inference, or Live Drone Recon Stream for live drone video feed.",
     )
 
-    if mode == "Real Model Mode":
+    if mode in ["Real Model Mode", "Live Drone Recon Stream"]:
         backend_choice = st.sidebar.selectbox(
             "Model Backend",
             options=[
@@ -93,7 +93,7 @@ def render_sidebar() -> SidebarConfig:
     st.sidebar.markdown("---")
     st.sidebar.subheader("Spatial & Model Parameters")
 
-    if mode == "Real Model Mode":
+    if mode in ["Real Model Mode", "Live Drone Recon Stream"]:
         center_lat = float(st.sidebar.number_input(
             "Centre Latitude",
             value=30.154378,

@@ -3,6 +3,7 @@ MERIDIAN-Lite UI Subsystem Package.
 Contains modular presentation components for the Streamlit decision-support dashboard.
 """
 
+from app.ui.drone_view import render_live_drone_recon_view
 from app.ui.export_view import render_export_section
 from app.ui.imagery_view import render_imagery_section
 from app.ui.map_view import build_folium_map, render_folium_map
@@ -23,6 +24,7 @@ __all__ = [
     "render_tactical_summary",
     "render_priority_zones_section",
     "render_imagery_section",
+    "render_live_drone_recon_view",
     "build_folium_map",
     "render_folium_map",
     "render_building_inventory_table",

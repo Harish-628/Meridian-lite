@@ -17,6 +17,7 @@ from app.ui import (
     render_folium_map,
     render_header_banners,
     render_imagery_section,
+    render_live_drone_recon_view,
     render_priority_zones_section,
     render_sidebar,
     render_tactical_summary,
@@ -294,20 +295,40 @@ df_results = features_to_dataframe(geojson_data)
 # ==========================================
 # PRESENTATION VIEWS
 # ==========================================
-render_tactical_summary(metrics, st.session_state.get("processing_time_ms"))
-render_priority_zones_section(priority_zones)
-render_imagery_section(
-    st.session_state.get("pre_display_path"),
-    st.session_state.get("post_display_path"),
-    st.session_state.get("overlay_path"),
-)
-map_instance = build_folium_map(geojson_data, priority_zones, cfg.center_lat, cfg.center_lon)
-render_folium_map(map_instance)
-render_building_inventory_table(df_results)
-render_export_section(
-    geojson_data=geojson_data,
-    metrics=metrics,
-    df_results=df_results,
-    priority_zones=priority_zones,
-    overlay_path=st.session_state.get("overlay_path"),
-)
+if cfg.mode == "Live Drone Recon Stream":
+    drone_pre = PROJECT_ROOT / "data" / "processed" / "hurricane_michael_pre.png"
+    drone_post = PROJECT_ROOT / "data" / "processed" / "hurricane_michael_post.png"
+    render_live_drone_recon_view(
+        pre_image_path=drone_pre,
+        post_image_path=drone_post,
+        priority_zones=priority_zones,
+        confidence_threshold=cfg.confidence_threshold,
+    )
+    map_instance = build_folium_map(geojson_data, priority_zones, cfg.center_lat, cfg.center_lon)
+    render_folium_map(map_instance)
+    render_building_inventory_table(df_results)
+    render_export_section(
+        geojson_data=geojson_data,
+        metrics=metrics,
+        df_results=df_results,
+        priority_zones=priority_zones,
+        overlay_path=st.session_state.get("overlay_path"),
+    )
+else:
+    render_tactical_summary(metrics, st.session_state.get("processing_time_ms"))
+    render_priority_zones_section(priority_zones)
+    render_imagery_section(
+        st.session_state.get("pre_display_path"),
+        st.session_state.get("post_display_path"),
+        st.session_state.get("overlay_path"),
+    )
+    map_instance = build_folium_map(geojson_data, priority_zones, cfg.center_lat, cfg.center_lon)
+    render_folium_map(map_instance)
+    render_building_inventory_table(df_results)
+    render_export_section(
+        geojson_data=geojson_data,
+        metrics=metrics,
+        df_results=df_results,
+        priority_zones=priority_zones,
+        overlay_path=st.session_state.get("overlay_path"),
+    )

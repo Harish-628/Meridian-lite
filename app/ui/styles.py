@@ -87,6 +87,21 @@ def render_header_banners(mode: str, dataset_choice: str = "", backend_choice: s
             "⚠️ **Demo mode uses simulated imagery and simulated damage output for rapid testing and verification.** "
             "To evaluate genuine disaster drone footage with real neural network inference, switch to **Real Model Mode** in the sidebar."
         )
+    elif mode == "Live Drone Recon Stream":
+        st.markdown(
+            """
+            <div style="background-color: #0F172A; border: 1.5px solid #00F0D2; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+                <span style="background-color: #EF4444; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold;">● LIVE DRONE RECON STREAM</span>
+                <span style="color: #00F0D2; font-weight: 600; margin-left: 10px;">
+                    UAV-SAR-01 Optical Datalink Active &nbsp;|&nbsp; Local ONNX Real-Time Neural Inference
+                </span>
+                <div style="color: #94A3B8; font-size: 0.88rem; margin-top: 4px;">
+                    Real-time aerial surveillance of Hurricane Michael disaster sector (Callaway, FL). Progressive drone waypoint scanning, live sensor telemetry, HUD bounding boxes, and tactical resource allocation.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     elif mode == "Upload mode":
         st.info(
             "ℹ️ **Upload mode enabled:** Supply your own pre- and post-disaster aerial imagery pairs. "
