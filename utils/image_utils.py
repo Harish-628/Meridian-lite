@@ -337,31 +337,28 @@ def create_tactical_detection_overlay(
             zy1 = min(h, (r_idx + 1) * cell_h)
 
             if rank == 1 or zid == top_zone_id:
-                # Strong red semi-transparent overlay for first rescue area
-                rescue_overlay = canvas.copy()
-                cv2.rectangle(rescue_overlay, (zx0, zy0), (zx1, zy1), (30, 30, 220), -1)
-                cv2.addWeighted(rescue_overlay, 0.22, canvas, 0.78, 0, canvas)
-
-                # Bright tactical red boundary + target corners
-                cv2.rectangle(canvas, (zx0, zy0), (zx1, zy1), (40, 40, 240), 3)
-                t_len = min(30, cell_w // 4)
+                # Golden tactical framing for first rescue area (NO opaque red wash)
+                gold = (0, 215, 255)
+                cv2.rectangle(canvas, (zx0, zy0), (zx1, zy1), gold, 2)
+                t_len = min(32, cell_w // 4)
                 for (cx, cy, cdx, cdy) in [
                     (zx0, zy0, 1, 1), (zx1, zy0, -1, 1),
                     (zx0, zy1, 1, -1), (zx1, zy1, -1, -1)
                 ]:
-                    cv2.line(canvas, (cx, cy), (cx + cdx * t_len, cy), (0, 255, 255), 4)
-                    cv2.line(canvas, (cx, cy), (cx, cy + cdy * t_len), (0, 255, 255), 4)
+                    cv2.line(canvas, (cx, cy), (cx + cdx * t_len, cy), gold, 4)
+                    cv2.line(canvas, (cx, cy), (cx, cy + cdy * t_len), gold, 4)
 
                 # Center target reticle
                 rcx, rcy = (zx0 + zx1) // 2, (zy0 + zy1) // 2
-                cv2.circle(canvas, (rcx, rcy), 18, (0, 255, 255), 2)
-                cv2.drawMarker(canvas, (rcx, rcy), (0, 255, 255), cv2.MARKER_CROSS, 28, 2)
+                cv2.circle(canvas, (rcx, rcy), 18, gold, 2)
+                cv2.drawMarker(canvas, (rcx, rcy), gold, cv2.MARKER_CROSS, 28, 2)
 
                 # Label tag
-                tag = f"RESCUE FIRST: {zid} (Rank #1 Focus)"
-                (tw, th), _ = cv2.getTextSize(tag, cv2.FONT_HERSHEY_SIMPLEX, 0.50, 2)
-                cv2.rectangle(canvas, (zx0 + 6, zy0 + 6), (zx0 + tw + 18, zy0 + th + 16), (40, 40, 240), -1)
-                cv2.putText(canvas, tag, (zx0 + 12, zy0 + th + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+                tag = f"🎯 PRIORITY 1 SEARCH SECTOR: {zid}"
+                (tw, th), _ = cv2.getTextSize(tag, cv2.FONT_HERSHEY_SIMPLEX, 0.44, 1)
+                cv2.rectangle(canvas, (zx0 + 6, zy0 + 6), (zx0 + tw + 18, zy0 + th + 16), (15, 23, 42), -1)
+                cv2.rectangle(canvas, (zx0 + 6, zy0 + 6), (zx0 + tw + 18, zy0 + th + 16), gold, 1)
+                cv2.putText(canvas, tag, (zx0 + 12, zy0 + th + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.44, gold, 1, cv2.LINE_AA)
             else:
                 # Normal zone tag
                 z_tag = f"{zid} (Rank #{rank})"
@@ -388,34 +385,39 @@ def create_tactical_detection_overlay(
             else:
                 continue
 
-        # Fill building polygon with semi-transparent tint
+        # Fill building polygon with subtle semi-transparent tint (20% opacity)
         cv2.fillPoly(fill_layer, [pts], color)
         bx0, by0, bw, bh = cv2.boundingRect(pts)
         bld_polys_to_stroke.append((pts, color, bld_id, dmg, conf, (bx0, by0, bw, bh)))
 
     # Blend polygon fills into canvas
-    cv2.addWeighted(fill_layer, 0.28, canvas, 0.72, 0, canvas)
+    cv2.addWeighted(fill_layer, 0.20, canvas, 0.80, 0, canvas)
 
     # Stroke building outlines and draw tactical tags
     for pts, color, bld_id, dmg, conf, (bx0, by0, bw, bh) in bld_polys_to_stroke:
         cv2.polylines(canvas, [pts], isClosed=True, color=color, thickness=2)
 
-        # Corner accents around bounding box
+        # 4 Corner brackets around bounding box
         al = min(8, max(3, bw // 3))
         cv2.line(canvas, (bx0, by0), (bx0 + al, by0), color, 2)
         cv2.line(canvas, (bx0, by0), (bx0, by0 + al), color, 2)
         cv2.line(canvas, (bx0 + bw, by0), (bx0 + bw - al, by0), color, 2)
         cv2.line(canvas, (bx0 + bw, by0), (bx0 + bw, by0 + al), color, 2)
+        cv2.line(canvas, (bx0, by0 + bh), (bx0 + al, by0 + bh), color, 2)
+        cv2.line(canvas, (bx0, by0 + bh), (bx0, by0 + bh - al), color, 2)
+        cv2.line(canvas, (bx0 + bw, by0 + bh), (bx0 + bw - al, by0 + bh), color, 2)
+        cv2.line(canvas, (bx0 + bw, by0 + bh), (bx0 + bw, by0 + bh - al), color, 2)
 
-        # Render tactical label pill on damaged structures
+        # Render tactical label pill on damaged structures (Full proper label)
         if dmg in ["destroyed", "major-damage", "minor-damage"]:
-            short_lbl = f"{dmg[:4].upper()} {int(conf*100)}%"
-            (lw, lh), _ = cv2.getTextSize(short_lbl, cv2.FONT_HERSHEY_SIMPLEX, 0.34, 1)
-            lx = max(2, bx0)
-            ly = max(lh + 4, by0 - 2)
-            cv2.rectangle(canvas, (lx - 1, ly - lh - 3), (lx + lw + 3, ly + 2), (15, 23, 42), -1)
-            cv2.rectangle(canvas, (lx - 1, ly - lh - 3), (lx + lw + 3, ly + 2), color, 1)
-            cv2.putText(canvas, short_lbl, (lx + 1, ly - 1), cv2.FONT_HERSHEY_SIMPLEX, 0.34, (255, 255, 255), 1, cv2.LINE_AA)
+            tag_name = "DESTROYED" if dmg == "destroyed" else ("MAJOR" if dmg == "major-damage" else "MINOR")
+            label_text = f"{tag_name} {int(conf*100)}%"
+            (lw, lh), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.35, 1)
+            lx = max(4, min(w - lw - 10, bx0))
+            ly = max(lh + 4, min(h - 8, by0 - 4))
+            cv2.rectangle(canvas, (lx - 2, ly - lh - 3), (lx + lw + 4, ly + 2), (15, 23, 42), -1)
+            cv2.rectangle(canvas, (lx - 2, ly - lh - 3), (lx + lw + 4, ly + 2), color, 1)
+            cv2.putText(canvas, label_text, (lx + 1, ly - 1), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 255, 255), 1, cv2.LINE_AA)
 
     # 3. Tactical Military Corner Brackets
     L = 35

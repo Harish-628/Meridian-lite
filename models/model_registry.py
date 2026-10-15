@@ -90,6 +90,19 @@ class ClassicalChangeDetectionBackend(ModelBackend):
 
         # 1. Structural difference
         diff = cv2.absdiff(pre_gray, post_gray)
+
+        # Suppress image border margin (screenshot borders and framing)
+        margin = 14
+        diff[:margin, :] = 0
+        diff[-margin:, :] = 0
+        diff[:, :margin] = 0
+        diff[:, -margin:] = 0
+
+        # Suppress smooth, low-texture water regions in pre-disaster imagery
+        sobel_mag = cv2.magnitude(cv2.Sobel(pre_gray, cv2.CV_32F, 1, 0), cv2.Sobel(pre_gray, cv2.CV_32F, 0, 1))
+        water_mask = (pre_gray < 75) & (sobel_mag < 25)
+        diff[water_mask] = 0
+
         blurred = cv2.medianBlur(diff, 5)
 
         # 2. Otsu thresholding for change segmentation
@@ -98,23 +111,32 @@ class ClassicalChangeDetectionBackend(ModelBackend):
         # 3. Morphological opening and closing to delineate building-like structures
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
         opened = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-        closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
+        closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel, iterations=2)
 
         # 4. Find external contours
         cnts, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         features: list[dict[str, Any]] = []
-        feat_idx = 1
 
         for c in cnts:
             area = cv2.contourArea(c)
             # Filter non-building noise or massive landscape changes
-            if not (120 < area < 25000):
+            if not (150 < area < 12000):
                 continue
 
             bx, by, bw, bh = cv2.boundingRect(c)
+            # Exclude detections hugging image borders
+            if bx <= margin or by <= margin or bx + bw >= w - margin or by + bh >= h - margin:
+                continue
+
             aspect = float(bw) / max(bh, 1)
-            if not (0.25 <= aspect <= 4.0):
+            if not (0.28 <= aspect <= 3.6):
+                continue
+
+            hull = cv2.convexHull(c)
+            solidity = area / max(cv2.contourArea(hull), 1.0)
+            extent = area / float(bw * bh)
+            if solidity < 0.55 or extent < 0.32:
                 continue
 
             # Compute contour mask and change statistics
@@ -135,20 +157,19 @@ class ClassicalChangeDetectionBackend(ModelBackend):
             edge_ratio = post_edge_count / max(pre_edge_count, 1)
 
             # Damage classification rule based on structural change and edge disruption
-            if mean_diff >= 90.0 or (mean_diff >= 70.0 and edge_ratio > 2.5):
+            if mean_diff >= 75.0 or (mean_diff >= 60.0 and edge_ratio > 2.0):
                 damage_class = "destroyed"
                 raw_conf = min(0.98, 0.75 + (mean_diff / 255.0) * 0.25)
-            elif mean_diff >= 65.0 or (mean_diff >= 50.0 and edge_ratio > 1.8):
+            elif mean_diff >= 48.0 or (mean_diff >= 38.0 and edge_ratio > 1.5):
                 damage_class = "major-damage"
                 raw_conf = min(0.95, 0.70 + (mean_diff / 255.0) * 0.25)
-            elif mean_diff >= 38.0 or edge_ratio > 1.3:
+            elif mean_diff >= 28.0 or edge_ratio > 1.2:
                 damage_class = "minor-damage"
                 raw_conf = min(0.92, 0.65 + (mean_diff / 255.0) * 0.25)
             else:
                 damage_class = "no-damage"
                 raw_conf = min(0.94, 0.60 + (1.0 - mean_diff / 255.0) * 0.35)
 
-            # Compactness heuristic
             perimeter = cv2.arcLength(c, True)
             compactness = (4 * np.pi * area) / (perimeter * perimeter + 1e-5)
             confidence = round(float(np.clip(raw_conf * (0.8 + 0.2 * min(compactness, 1.0)), 0.45, 0.98)), 4)
@@ -156,21 +177,12 @@ class ClassicalChangeDetectionBackend(ModelBackend):
             if confidence < confidence_threshold:
                 continue
 
-            # Approximate polygon geometry (Douglas-Peucker)
-            epsilon = 0.03 * perimeter
-            approx = cv2.approxPolyDP(c, max(epsilon, 3.0), True)
-            pts = [(float(pt[0][0]), float(pt[0][1])) for pt in approx]
-            if len(pts) < 3:
-                # Fallback to rectangle points
-                pts = [
-                    (float(bx), float(by)),
-                    (float(bx + bw), float(by)),
-                    (float(bx + bw), float(by + bh)),
-                    (float(bx), float(by + bh)),
-                ]
+            # Proper oriented building bounding rectangle (crisp 4-corner polygon)
+            rect = cv2.minAreaRect(c)
+            box = cv2.boxPoints(rect)
+            pts = [(float(pt[0]), float(pt[1])) for pt in box]
 
             feature_props = {
-                "feature_id": f"BLD-CV-{feat_idx:04d}",
                 "damage_class": damage_class,
                 "confidence": confidence,
                 "source_model": self.name,
@@ -180,16 +192,27 @@ class ClassicalChangeDetectionBackend(ModelBackend):
                 "model_version": self.version,
                 "pixel_area": float(area),
                 "mean_spectral_diff": round(mean_diff, 2),
-                "pixel_polygon": [[float(pt[0]), float(pt[1])] for pt in pts],
+                "edge_ratio": round(float(edge_ratio), 2),
+                "pixel_polygon": [[float(pt[0]), float(pt[1])] for pt in box],
                 "pixel_bbox": [int(bx), int(by), int(bw), int(bh)],
             }
 
             geojson_feat = georeferencer.to_geojson_polygon(pts, feature_props)
             features.append(geojson_feat)
-            feat_idx += 1
 
-            if len(features) >= max_features:
+            if len(features) >= max_features * 2:
                 break
+
+        # Sort features by damage severity: Destroyed (Red) first, then Major, then Minor, then Intact
+        severity_rank = {"destroyed": 0, "major-damage": 1, "minor-damage": 2, "no-damage": 3}
+        features.sort(key=lambda f: (severity_rank.get(f["properties"]["damage_class"], 4), -f["properties"]["confidence"]))
+        features = features[:max_features]
+
+        # Index sequential tactical feature IDs
+        for idx, feat in enumerate(features, 1):
+            feat_id = f"BLD-CV-{idx:04d}"
+            feat["properties"]["feature_id"] = feat_id
+            feat["id"] = feat_id
 
         elapsed = time.perf_counter() - start_time
         global _LAST_INFERENCE_TIMESTAMP
@@ -367,6 +390,18 @@ class RealDamageModelBackend(ModelBackend):
         post_gray = cv2.cvtColor(post_image, cv2.COLOR_RGB2GRAY)
         diff = cv2.absdiff(pre_gray, post_gray)
 
+        # Suppress image border margin (screenshot borders and framing)
+        margin = 14
+        diff[:margin, :] = 0
+        diff[-margin:, :] = 0
+        diff[:, :margin] = 0
+        diff[:, -margin:] = 0
+
+        # Suppress smooth, low-texture water regions in pre-disaster imagery
+        sobel_mag = cv2.magnitude(cv2.Sobel(pre_gray, cv2.CV_32F, 1, 0), cv2.Sobel(pre_gray, cv2.CV_32F, 0, 1))
+        water_mask = (pre_gray < 75) & (sobel_mag < 25)
+        diff[water_mask] = 0
+
         blurred = cv2.medianBlur(diff, 5)
         _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
@@ -378,11 +413,21 @@ class RealDamageModelBackend(ModelBackend):
         candidate_boxes: list[Tuple[int, int, int, int, list[Tuple[float, float]], float, float, float]] = []
         for c in cnts:
             area = cv2.contourArea(c)
-            if not (120 < area < 25000):
+            if not (150 < area < 12000):
                 continue
             bx, by, bw, bh = cv2.boundingRect(c)
+            # Exclude detections hugging image borders
+            if bx <= margin or by <= margin or bx + bw >= w - margin or by + bh >= h - margin:
+                continue
+
             aspect = float(bw) / max(bh, 1)
-            if not (0.25 <= aspect <= 4.0):
+            if not (0.28 <= aspect <= 3.6):
+                continue
+
+            hull = cv2.convexHull(c)
+            solidity = area / max(cv2.contourArea(hull), 1.0)
+            extent = area / float(bw * bh)
+            if solidity < 0.55 or extent < 0.32:
                 continue
 
             # Compute contour mask difference and edge statistics
@@ -396,24 +441,16 @@ class RealDamageModelBackend(ModelBackend):
             post_edges = np.count_nonzero(cv2.Canny(post_crop, 50, 150))
             edge_ratio = float(post_edges) / max(float(pre_edges), 1.0)
 
-            perimeter = cv2.arcLength(c, True)
-            epsilon = 0.03 * perimeter
-            approx = cv2.approxPolyDP(c, max(epsilon, 3.0), True)
-            pts = [(float(pt[0][0]), float(pt[0][1])) for pt in approx]
-            if len(pts) < 3:
-                pts = [
-                    (float(bx), float(by)),
-                    (float(bx + bw), float(by)),
-                    (float(bx + bw), float(by + bh)),
-                    (float(bx), float(by + bh)),
-                ]
+            # Proper oriented building bounding rectangle (crisp 4-corner polygon)
+            rect = cv2.minAreaRect(c)
+            box = cv2.boxPoints(rect)
+            pts = [(float(pt[0]), float(pt[1])) for pt in box]
             candidate_boxes.append((bx, by, bw, bh, pts, area, mean_diff, edge_ratio))
 
             if len(candidate_boxes) >= max_features * 2:
                 break
 
         features: list[dict[str, Any]] = []
-        feat_idx = 1
 
         # Batch neural inference through ONNX
         batch_inputs: list[np.ndarray] = []
@@ -444,13 +481,13 @@ class RealDamageModelBackend(ModelBackend):
 
                 # Multimodal Neuro-Symbolic Calibration:
                 # Synthesize neural CNN prior with physical structural difference metrics
-                if mean_diff >= 85.0 or (mean_diff >= 65.0 and edge_ratio > 2.0):
+                if mean_diff >= 75.0 or (mean_diff >= 60.0 and edge_ratio > 2.0):
                     phys_probs = np.array([0.02, 0.08, 0.25, 0.65], dtype=np.float32)
                     phys_conf = min(0.96, 0.75 + (mean_diff / 255.0) * 0.25)
-                elif mean_diff >= 58.0 or (mean_diff >= 44.0 and edge_ratio > 1.6):
+                elif mean_diff >= 48.0 or (mean_diff >= 38.0 and edge_ratio > 1.5):
                     phys_probs = np.array([0.05, 0.15, 0.60, 0.20], dtype=np.float32)
                     phys_conf = min(0.92, 0.70 + (mean_diff / 255.0) * 0.25)
-                elif mean_diff >= 30.0 or edge_ratio > 1.25:
+                elif mean_diff >= 28.0 or edge_ratio > 1.2:
                     phys_probs = np.array([0.10, 0.60, 0.25, 0.05], dtype=np.float32)
                     phys_conf = min(0.88, 0.65 + (mean_diff / 255.0) * 0.25)
                 else:
@@ -468,7 +505,6 @@ class RealDamageModelBackend(ModelBackend):
                     continue
 
                 feature_props = {
-                    "feature_id": f"BLD-ONNX-{feat_idx:04d}",
                     "damage_class": damage_class,
                     "confidence": confidence,
                     "source_model": self.name,
@@ -486,10 +522,20 @@ class RealDamageModelBackend(ModelBackend):
 
                 geojson_feat = georeferencer.to_geojson_polygon(pts, feature_props)
                 features.append(geojson_feat)
-                feat_idx += 1
 
-                if len(features) >= max_features:
+                if len(features) >= max_features * 2:
                     break
+
+        # Sort features by damage severity: Destroyed (Red) first, then Major, then Minor, then Intact
+        severity_rank = {"destroyed": 0, "major-damage": 1, "minor-damage": 2, "no-damage": 3}
+        features.sort(key=lambda f: (severity_rank.get(f["properties"]["damage_class"], 4), -f["properties"]["confidence"]))
+        features = features[:max_features]
+
+        # Index sequential tactical feature IDs
+        for idx, feat in enumerate(features, 1):
+            feat_id = f"BLD-ONNX-{idx:04d}"
+            feat["properties"]["feature_id"] = feat_id
+            feat["id"] = feat_id
 
         elapsed = time.perf_counter() - start_time
         global _LAST_INFERENCE_TIMESTAMP
