@@ -87,6 +87,13 @@ MERIDIAN-Lite incorporates a dual real-model architecture alongside the Stage 1 
 ### 2.3 Model Architecture 3: Simulated xView2 Baseline (`SimulatedXView2Backend`)
 - Deterministic Stage 1 baseline for integration regression testing and air-gapped synthetic demonstration.
 
+### 2.4 Optional Backend 4: Advanced Damage Model Backend (GPU-Ready / CPU Fallback) (`AdvancedDamageModelGPUBackend`)
+- **Status:** Optional advanced damage backend with automated CPU fallback.
+- **Hardware Status:** NVIDIA GeForce RTX 3050 6GB Laptop GPU detected via `nvidia-smi` (Driver 595.99.02, CUDA Driver 13.2).
+- **Execution Provider Status:** The NVIDIA GPU is detected, but the installed ONNX Runtime does not include CUDAExecutionProvider. Therefore, the system performs real inference on CPU using the verified lightweight ONNX backend. No pretrained xBD/xView2 checkpoint is currently integrated.
+- **Automated Fallback:** Seamlessly routes inference through the verified lightweight bi-temporal ONNX model on CPU SIMD with zero application crashes.
+- **Setup & Documentation:** See [`docs/gpu_model_setup.md`](gpu_model_setup.md).
+
 ---
 
 ## 3. Hardware Requirements & Performance

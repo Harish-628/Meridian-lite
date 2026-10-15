@@ -360,4 +360,67 @@ The ONNX building footprints were rasterized onto the native $1024 \times 1024$ 
   - Playwright live browser test passed and verified that all downloaded GeoJSON features have WGS84 coordinates in Callaway, FL (`[-85.550100, 30.152997, -85.547337, 30.155760]`).
   - All 59 pytest tests and 2 standalone verification pipelines passed.
 
+---
+
+## 13. GPU Environment Audit & Advanced Damage Model Backend (GPU-Ready / CPU Fallback)
+
+- **Audit Timestamp:** 2026-10-15T17:30:00+05:30
+- **Auditor:** Senior ML Engineer, GPU Deployment Engineer & Release Auditor
+- **Objective:** Audit host GPU readiness, add an optional advanced damage model backend, enforce graceful CPU fallback, and guarantee zero regressions to the verified demo baseline.
+
+### 13.1 Hardware Environment Audit
+- **NVIDIA GPU:** `NVIDIA GeForce RTX 3050 6GB Laptop GPU`
+- **VRAM Total:** `6144 MiB` (6.0 GB GDDR6)
+- **NVIDIA Driver:** `595.99.02`
+- **CUDA Driver API Version:** `13.2`
+- **CUDA Toolkit Compiler (`nvcc`):** Not installed (`command not found`)
+- **Python Runtime:** Python `3.14.4`
+
+### 13.2 Framework & Execution Provider Audit
+```bash
+python -c "import onnxruntime as ort; print(ort.get_available_providers())"
+# Output: ['AzureExecutionProvider', 'CPUExecutionProvider']
+
+python -c "import torch; print(torch.cuda.is_available())"
+# Output: ModuleNotFoundError: No module named 'torch'
+```
+
+### 13.3 Architectural Decision & Verbatim Status
+> **“The NVIDIA GPU is detected, but the installed ONNX Runtime does not include CUDAExecutionProvider. Therefore, the system performs real inference on CPU using the verified lightweight ONNX backend. No pretrained xBD/xView2 checkpoint is currently integrated.”**
+
+- **Primary Demo Backend:** Strictly maintained as `Real Damage Model (ONNX)` running locally on CPU SIMD with sub-120 ms latency.
+- **Optional Backend Added:** `Advanced Damage Model Backend (GPU-Ready / CPU Fallback)` implemented with automated CPU fallback to prevent application crashes or unverified claims.
+- **Dependency Safeguard:** Zero external PyTorch, CUDA toolkit, cuDNN, or `onnxruntime-gpu` packages were installed into `.venv` to preserve 100% environment stability.
+
+### 13.4 Artifacts Created and Modified
+1. `models/gpu_predict.py`: Unified `run_gpu_inference` entrypoint with image validation, safe downsampling (>2048px), automated CPU fallback, and serialization.
+2. `models/model_registry.py`: `detect_gpu_hardware()`, `get_gpu_readiness_status()`, and `AdvancedDamageModelGPUBackend` registered as `advanced_damage_model_gpu`.
+3. `app/ui/sidebar.py`: GPU Status section and `"Advanced Damage Model Backend (GPU-Ready / CPU Fallback)"` option added with exact disclosure notice.
+4. `app/main.py`: Dispatch support for advanced GPU backend in Real Model and Upload modes.
+5. `scripts/evaluate_gpu_backend.py`: Pixel-level ground-truth evaluation script.
+6. `outputs/reports/gpu_model_evaluation.json`: Ground-truth evaluation results (Accuracy: 0.7781, Precision: 0.1304, Recall: 0.1034, F1: 0.1154, IoU: 0.0612).
+7. `docs/gpu_model_setup.md`: Comprehensive GPU hardware and future isolated deployment documentation.
+8. `docs/judge_questions.md`: Added Question 5 verbatim defense statement.
+9. `tests/test_gpu_backend.py`: Automated GPU readiness, hardware parsing, and registry tests.
+10. `tests/test_gpu_pipeline.py`: Automated end-to-end GPU inference pipeline and fallback tests.
+
+### 13.5 Verification & Test Evidence
+```bash
+python -m compileall app models utils tests test_pipeline.py test_stage2_pipeline.py
+# 100% compiled cleanly, 0 syntax errors
+
+python -m pytest tests/test_gpu_backend.py tests/test_gpu_pipeline.py -v
+# 7 passed, 1 skipped (test_cuda_hardware_execution_conditional skipped cleanly)
+
+python -m pytest -q
+# 92 passed, 1 skipped in 17.58s
+
+python test_pipeline.py
+# Stage 1 Verification Successful (Exit Code 0)
+
+python test_stage2_pipeline.py
+# Stage 2 Verification Successful (Exit Code 0)
+```
+
+
 

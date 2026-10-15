@@ -53,10 +53,12 @@ Our primary innovation is **transforming raw computer-vision detections into ope
 ---
 
 ### 5. Why are you running on CPU rather than GPU?
-Our environment audit showed that the host system's GPU was in an uninitialized driver communication state (`nvidia-smi` unavailable). Rather than failing or making empty claims, we engineered the Stage 2 model specifically for high-efficiency CPU execution:
-- Lightweight convolutional ONNX graph (opset 14, IR v10) with Global Average Pooling.
-- Sub-120 ms inference latency on standard x86_64 CPU cores.
-- This proves that first responders can run MERIDIAN-Lite on standard field laptops without requiring expensive, power-hungry mobile GPU rigs.
+“Our NVIDIA RTX 3050 GPU and driver are detected, but the installed ONNX Runtime does not include CUDAExecutionProvider. Therefore, MERIDIAN-Lite currently performs real inference on CPU using the lightweight bi-temporal ONNX model. This is sufficient for our offline post-flight image-pair workflow. GPU acceleration is planned for future high-throughput or real-time video processing, and the architecture supports adding a GPU-enabled runtime without changing the GIS, priority-zone or dashboard layers.”
+
+Key engineering advantages of this approach:
+- Lightweight convolutional ONNX graph (opset 14, IR v10) with sub-120 ms latency on CPU SIMD.
+- Zero dependency on heavy CUDA/cuDNN gigabyte installations for field responders.
+- Full architectural readiness: switching to a CUDA-enabled runtime simply requires registering a GPU execution provider without modifying any downstream GIS, priority-zone triage, or dashboard code.
 
 ---
 

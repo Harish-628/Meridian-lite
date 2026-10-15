@@ -138,6 +138,10 @@ def run_real_inference(
     h, w = pre_img.shape[:2]
     if h == 0 or w == 0:
         raise ValueError(f"Invalid image dimensions: {w}x{h}")
+    if post_img.shape[:2] != (h, w):
+        import cv2
+        logger.warning(f"Shape mismatch: pre is {pre_img.shape[:2]}, post is {post_img.shape[:2]}. Resizing post to match pre.")
+        post_img = cv2.resize(post_img, (w, h), interpolation=cv2.INTER_LINEAR)
 
     # 3. Setup georeferencing
     georeferencer = _resolve_bounds(

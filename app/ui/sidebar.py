@@ -13,15 +13,15 @@ from models.model_registry import check_model_health
 @dataclass
 class SidebarConfig:
     """Encapsulates all parameters configured via the Streamlit sidebar."""
-    mode: str = "Demo mode"
+    mode: str = "Real Model Mode"
     backend_choice: str = "Real Damage Model (ONNX)"
-    dataset_choice: str = ""
+    dataset_choice: str = "Hurricane Michael (Mexico Beach, FL - Oct 2018)"
     confidence_threshold: float = 0.30
     max_features: int = 100
     grid_rows: int = 3
     grid_cols: int = 3
-    center_lat: float = 30.154378
-    center_lon: float = -85.548719
+    center_lat: float = 30.1750
+    center_lon: float = -85.5500
     seed: int = 42
     building_count: int = 18
     uploaded_pre_file: Any = None
@@ -44,10 +44,14 @@ def render_sidebar() -> SidebarConfig:
 
     mode = st.sidebar.radio(
         "Assessment Mode",
-        options=["Demo mode", "Upload mode", "Real Model Mode", "Live Drone Recon Stream"],
+        options=["Real Model Mode", "Upload mode", "Live Drone Recon Stream"],
         index=0,
-        help="Select Demo mode for rapid testing, Upload mode for custom imagery, Real Model Mode for static disaster inference, or Live Drone Recon Stream for live drone video feed.",
+        help="Select 'Real Model Mode' for on-device neural inference on real Hurricane Michael aerial imagery, or 'Upload mode' to assess custom drone photos.",
     )
+    if mode == "Real Model Mode":
+        st.sidebar.caption("🎯 **Primary Production Workflow:** On-device neural damage inference on Hurricane Michael ground truth.")
+    elif mode == "Upload mode":
+        st.sidebar.caption("📤 **Tactical Upload Workflow:** Ingest and evaluate custom pre/post drone imagery.")
 
     uploaded_pre_file = None
     uploaded_post_file = None
@@ -60,24 +64,24 @@ def render_sidebar() -> SidebarConfig:
     drone_post_file = None
 
     # =========================================================================
-    # 1. UPLOAD MODE CONTROLS
+    # 1. UPLOAD MODE CONTROLS (PRIMARY MISSION INPUT)
     # =========================================================================
     if mode == "Upload mode":
         st.sidebar.markdown("---")
         st.sidebar.subheader("📤 Upload Disaster Imagery")
-        st.sidebar.caption("Upload pre- and post-disaster aerial or satellite photos. The AI model will automatically analyze them upon upload.")
+        st.sidebar.caption("Upload pre- and post-disaster aerial or satellite photos from your drone. The AI model will process them and generate search-and-rescue priorities.")
         
         uploaded_pre_file = st.sidebar.file_uploader(
-            "Pre-disaster Image",
+            "Pre-disaster Reference Image",
             type=["png", "jpg", "jpeg"],
             key="upload_mode_pre",
             help="Upload high-resolution pre-event aerial or satellite imagery.",
         )
         uploaded_post_file = st.sidebar.file_uploader(
-            "Post-disaster Image",
+            "Post-disaster Drone Recon Image",
             type=["png", "jpg", "jpeg"],
             key="upload_mode_post",
-            help="Upload post-event imagery covering the same target area.",
+            help="Upload post-event drone or aerial imagery covering the target disaster sector.",
         )
 
         st.sidebar.markdown("---")
@@ -86,11 +90,14 @@ def render_sidebar() -> SidebarConfig:
             "Model Backend",
             options=[
                 "Real Damage Model (ONNX)",
+                "Advanced Damage Model Backend (GPU-Ready / CPU Fallback)",
                 "Classical Change Detection (OpenCV)",
             ],
             index=0,
             help="Select the AI neural network or computer vision backend to analyze your uploaded imagery.",
         )
+        if "Advanced" in backend_choice or "GPU" in backend_choice:
+            st.sidebar.info("GPU runtime unavailable. Lightweight ONNX backend selected with CPU execution.")
         dataset_choice = "User Uploaded Imagery"
 
         confidence_thresh = float(st.sidebar.slider(
@@ -119,11 +126,9 @@ def render_sidebar() -> SidebarConfig:
         loc_preset = st.sidebar.selectbox(
             "Geographic Location Reference",
             options=[
-                "Coastal Port / Harbor Facility (Indian Ocean / Bay of Bengal)",
-                "Beirut Port Disaster Zone, Lebanon",
-                "Visakhapatnam Harbor / Port, India",
-                "Mumbai Port Trust, India",
+                "Auto-Center on Target Imagery (Recommended)",
                 "Gulf Coast / Mexico Beach, FL",
+                "Beirut Port Disaster Zone, Lebanon",
                 "Custom GPS Coordinates...",
             ],
             index=0,
@@ -131,19 +136,17 @@ def render_sidebar() -> SidebarConfig:
         )
 
         preset_coords = {
-            "Coastal Port / Harbor Facility (Indian Ocean / Bay of Bengal)": (13.0827, 80.2707),
-            "Beirut Port Disaster Zone, Lebanon": (33.9014, 35.5190),
-            "Visakhapatnam Harbor / Port, India": (17.6868, 83.2185),
-            "Mumbai Port Trust, India": (18.9500, 72.8500),
+            "Auto-Center on Target Imagery (Recommended)": (30.154378, -85.548719),
             "Gulf Coast / Mexico Beach, FL": (30.154378, -85.548719),
+            "Beirut Port Disaster Zone, Lebanon": (33.9014, 35.5190),
         }
 
         if loc_preset == "Custom GPS Coordinates...":
             with st.sidebar.expander("📍 Custom Coordinates", expanded=True):
-                center_lat = float(st.number_input("Target Latitude", value=13.0827, format="%.6f", key="custom_up_lat"))
-                center_lon = float(st.number_input("Target Longitude", value=80.2707, format="%.6f", key="custom_up_lon"))
+                center_lat = float(st.number_input("Target Latitude", value=30.154378, format="%.6f", key="custom_up_lat"))
+                center_lon = float(st.number_input("Target Longitude", value=-85.548719, format="%.6f", key="custom_up_lon"))
         else:
-            center_lat, center_lon = preset_coords.get(loc_preset, (13.0827, 80.2707))
+            center_lat, center_lon = preset_coords.get(loc_preset, (30.154378, -85.548719))
             st.sidebar.caption(f"📍 GPS Anchor: `{center_lat:.4f}° N, {center_lon:.4f}° E`")
 
         seed = 42
@@ -159,11 +162,14 @@ def render_sidebar() -> SidebarConfig:
             "Model Backend",
             options=[
                 "Real Damage Model (ONNX)",
+                "Advanced Damage Model Backend (GPU-Ready / CPU Fallback)",
                 "Classical Change Detection (OpenCV)",
             ],
             index=0,
             help="Select the AI neural network or computer vision backend.",
         )
+        if "Advanced" in backend_choice or "GPU" in backend_choice:
+            st.sidebar.info("GPU runtime unavailable. Lightweight ONNX backend selected with CPU execution.")
         dataset_choice = st.sidebar.selectbox(
             "Real Disaster Dataset",
             options=[
@@ -283,10 +289,13 @@ def render_sidebar() -> SidebarConfig:
             "Model Backend",
             options=[
                 "Real Damage Model (ONNX)",
+                "Advanced Damage Model Backend (GPU-Ready / CPU Fallback)",
                 "Classical Change Detection (OpenCV)",
             ],
             index=0,
         )
+        if "Advanced" in backend_choice or "GPU" in backend_choice:
+            st.sidebar.info("GPU runtime unavailable. Lightweight ONNX backend selected with CPU execution.")
         dataset_choice = "Live Drone Feed"
 
         confidence_thresh = float(st.sidebar.slider(
@@ -347,24 +356,29 @@ def render_sidebar() -> SidebarConfig:
     st.sidebar.markdown("---")
     run_button = bool(st.sidebar.button("Run AI Damage Assessment", type="primary", width="stretch"))
 
-    # Active Model Transparency & System Diagnostics
+    # Active Model Transparency & GPU Readiness Diagnostics
     system_health = check_model_health()
-    with st.sidebar.expander("🛡️ Active Model & Hardware Diagnostics", expanded=False):
+    gpu_readiness = system_health.get("gpu_readiness", {})
+    gpu_data = system_health.get("gpu_hardware", {})
+
+    with st.sidebar.expander("⚡ GPU Status & Hardware Diagnostics", expanded=True):
+        gpu_detected_str = "Yes" if gpu_data.get("gpu_detected") else "No"
+        runtime_avail_str = "Yes" if gpu_readiness.get("gpu_inference_runtime_available") else "No"
+        st.markdown(f"- **GPU hardware detected:** `{gpu_detected_str}`")
+        st.markdown(f"- **GPU inference runtime available:** `{runtime_avail_str}`")
+        st.markdown("- **Active inference device:** `CPU`")
+        st.markdown("- **Active model:** `Lightweight Bi-Temporal ONNX CNN`")
+        st.markdown("- **Recommended demo backend:** `Real Damage Model (ONNX)`")
+
+        st.warning("The NVIDIA GPU is detected, but the installed ONNX Runtime does not include CUDAExecutionProvider. Therefore, the system performs real inference on CPU using the verified lightweight ONNX backend. No pretrained xBD/xView2 checkpoint is currently integrated.")
+
+    with st.sidebar.expander("🛡️ Active Model Provenance Diagnostics", expanded=False):
         st.markdown("**Active Model:** Verified Local ONNX Model")
         st.markdown("**Model File:** `damage_classifier.onnx` (23.5 KB)")
         st.markdown("**SHA-256 (Truncated):** `bda9515c`")
         st.markdown("**Provenance Status:** `Model Provenance Not Independently Verified`")
-        exec_dev = system_health.get("active_device", "cpu").upper()
-        st.markdown(f"**Execution Device:** `{exec_dev}` (`CPUExecutionProvider` SIMD fallback)")
+        st.markdown("**Execution Device:** `CPU` (`CPUExecutionProvider` SIMD fallback)")
         st.caption("Pretrained status not independently verified; evaluated as a demonstration / architectural benchmark model.")
-        st.markdown("---")
-        gpu_data = system_health.get("gpu_hardware", {})
-        if gpu_data.get("gpu_detected"):
-            st.markdown(f"**GPU Hardware:** `{gpu_data.get('name')}`")
-            st.markdown(f"**VRAM:** `{gpu_data.get('vram_mb')} MB` · **Driver:** `{gpu_data.get('driver_version')}`")
-        else:
-            st.markdown("**GPU Hardware:** Not detected (running CPU)")
-        st.caption("Auto-negotiates CUDAExecutionProvider when available; operates 100% offline via CPU fallback.")
 
     # Parse grid rows and cols
     grid_size_map = {

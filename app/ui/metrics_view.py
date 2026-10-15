@@ -173,6 +173,176 @@ def render_priority_zones_section(priority_zones: list[dict[str, Any]]) -> None:
     st.markdown("---")
 
 
+def render_tactical_incident_action_plan(
+    priority_zones: list[dict[str, Any]],
+    metrics: dict[str, Any],
+    processing_time_ms: float | None = None,
+) -> None:
+    """Render high-priority tactical rescue directives answering Where to Focus and What to Do."""
+    if not priority_zones:
+        return
+
+    top_zone = priority_zones[0]
+    deployments = calculate_tactical_resource_allocation(priority_zones)
+    top_deploy = deployments[0] if deployments else {}
+
+    total_usar = sum(d.get("usar_teams_needed", 0) for d in deployments)
+    total_med = sum(d.get("paramedic_units_needed", 0) for d in deployments)
+    total_debris = sum(d.get("debris_clearance_units", 0) for d in deployments)
+    total_uav = sum(d.get("uav_secondary_recon", 0) for d in deployments)
+
+    st.markdown("## 🚨 Tactical Incident Action Plan (Where to Focus & What to Do)")
+    st.caption("AI Decision-Support System: Translating drone reconnaissance imagery into immediate search & rescue priorities.")
+
+    # 1. High-Impact Target Alert Card (WHERE TO FOCUS FIRST)
+    st.markdown(
+        f"""
+        <div style="background: linear-gradient(135deg, #1e1b4b 0%, #311042 50%, #7f1d1d 100%);
+                    border: 2px solid #ef4444; border-radius: 10px; padding: 22px 26px;
+                    margin-bottom: 22px; color: white; box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.25);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+                <div style="flex: 1; min-width: 280px;">
+                    <div style="display: inline-block; background: #ef4444; color: white; padding: 4px 12px; border-radius: 4px; font-weight: 800; font-size: 0.84rem; letter-spacing: 1.2px; text-transform: uppercase;">
+                        🚨 PRIMARY RESCUE FOCUS: PRIORITY RANK #1
+                    </div>
+                    <div style="font-size: 1.85rem; font-weight: 900; margin-top: 8px; letter-spacing: 0.5px;">
+                        SECTOR: PRIORITY ZONE {top_zone['zone_id']}
+                    </div>
+                    <div style="font-size: 1.05rem; color: #fecaca; margin-top: 6px; font-weight: 500;">
+                        <b>Urgency Level:</b> <span style="color: #fef08a; font-weight: 800;">CRITICAL (IMMEDIATE LIFE EXTRACTION)</span> · Priority Score: <b>{top_zone['priority_score']:.3f}</b>
+                    </div>
+                    <div style="font-size: 0.95rem; color: #e2e8f0; margin-top: 6px;">
+                        <b>Severe Impact:</b> {top_zone['destroyed_buildings']} Destroyed Structures · {top_zone['major_damage_buildings']} Major Damage Structures
+                    </div>
+                    <div style="font-size: 0.92rem; color: #cbd5e1; margin-top: 8px; border-left: 3px solid #f59e0b; padding-left: 10px;">
+                        <b>Tactical Rationale:</b> {top_zone.get('reason', 'Highest density of catastrophic building collapses. Severe occupant entrapment hazard.')}
+                    </div>
+                </div>
+                <div style="background: rgba(15, 23, 42, 0.75); border: 1.5px solid rgba(239, 68, 68, 0.6); border-radius: 8px; padding: 16px 20px; min-width: 260px;">
+                    <div style="font-size: 0.80rem; color: #f87171; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">
+                        Immediate Resource Dispatch
+                    </div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #ffffff; margin-top: 6px;">
+                        🪖 {top_deploy.get('usar_teams_needed', 1)} USAR Squad(s)
+                    </div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: #fecaca; margin-top: 4px;">
+                        🚑 {top_deploy.get('paramedic_units_needed', 1)} Paramedic Ambulance(s)
+                    </div>
+                    <div style="font-size: 0.90rem; color: #cbd5e1; margin-top: 4px;">
+                        🚜 {top_deploy.get('debris_clearance_units', 1)} Heavy Clearance Unit(s)
+                    </div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # 2. Sequential Operational Command Directives (WHAT TO DO)
+    st.markdown("#### 📋 Operational Command Directives for Field Incident Commanders")
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.markdown(
+            f"""
+            <div style="background: #ffffff; border-left: 5px solid #ef4444; border-radius: 6px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                <span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 0.75rem;">
+                    PHASE 1 · 0-2 HOURS
+                </span>
+                <div style="font-weight: 700; font-size: 1.05rem; color: #0f172a; margin-top: 6px;">
+                    1. Primary Life Extraction & Search Sweep
+                </div>
+                <div style="font-size: 0.88rem; color: #334155; margin-top: 4px;">
+                    Deploy <b>{top_deploy.get('usar_teams_needed', 1)} Urban Search & Rescue Squad(s)</b> with acoustic listening probes and search canines directly to <b>Sector {top_zone['zone_id']}</b>. Prioritize confirmed collapsed voids for live survivor recovery.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"""
+            <div style="background: #ffffff; border-left: 5px solid #f59e0b; border-radius: 6px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                <span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 0.75rem;">
+                    PHASE 2 · 2-4 HOURS
+                </span>
+                <div style="font-weight: 700; font-size: 1.05rem; color: #0f172a; margin-top: 6px;">
+                    2. Trauma Triage & Emergency Medical Evacuation
+                </div>
+                <div style="font-size: 0.88rem; color: #334155; margin-top: 4px;">
+                    Establish Field Casualty Collection Point (CCP) at adjacent perimeter. Stage <b>{top_deploy.get('paramedic_units_needed', 1)} Ambulance Unit(s)</b> to handle immediate trauma stabilization and regional hospital transport.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with c2:
+        st.markdown(
+            f"""
+            <div style="background: #ffffff; border-left: 5px solid #0284c7; border-radius: 6px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                <span style="background: #e0f2fe; color: #075985; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 0.75rem;">
+                    PHASE 3 · 4-8 HOURS
+                </span>
+                <div style="font-weight: 700; font-size: 1.05rem; color: #0f172a; margin-top: 6px;">
+                    3. Arterial Roadway & Heavy Rubble Clearance
+                </div>
+                <div style="font-size: 0.88rem; color: #334155; margin-top: 4px;">
+                    Dispatch <b>{top_deploy.get('debris_clearance_units', 1)} Heavy Debris Clearance Squad(s)</b> to remove collapsed roof trusses and roadway blockages to maintain an open relief corridor into Sector {top_zone['zone_id']}.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"""
+            <div style="background: #ffffff; border-left: 5px solid #10b981; border-radius: 6px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                <span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 0.75rem;">
+                    PHASE 4 · 8-12 HOURS
+                </span>
+                <div style="font-weight: 700; font-size: 1.05rem; color: #0f172a; margin-top: 6px;">
+                    4. Continuous Drone Overwatch & Hazard Tracking
+                </div>
+                <div style="font-size: 0.88rem; color: #334155; margin-top: 4px;">
+                    Maintain tactical drone reconnaissance over secondary priority sectors. Monitor for ruptured gas lines, live electrical lines, and compromised walls threatening first responders.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # 3. Overall Sector Resource Footprint
+    res_c1, res_c2, res_c3, res_c4 = st.columns(4)
+    with res_c1:
+        st.metric("Total USAR Squads", f"🪖 {total_usar} Teams", help="Total Urban Search & Rescue teams needed across all sectors.")
+    with res_c2:
+        st.metric("Paramedic Ambulances", f"🚑 {total_med} Units", help="Emergency medical ambulances required for casualties.")
+    with res_c3:
+        st.metric("Debris Clearance", f"🚜 {total_debris} Squads", help="Heavy mechanical clearing units needed for roads.")
+    with res_c4:
+        st.metric("Secondary UAV Sweeps", f"🚁 {total_uav} Drones", help="Targeted drone flights required for secondary validation.")
+
+    # 4. Copyable Formal Incident Action Plan (IAP)
+    with st.expander("📄 View Formal Incident Action Plan (IAP) Radio Dispatch Briefing", expanded=False):
+        iap_text = (
+            "================================================================================\n"
+            "INCIDENT ACTION PLAN (IAP) · TACTICAL SEARCH & RESCUE DISPATCH\n"
+            "ORGANIZATION: Disaster Emergency Operations Center (EOC)\n"
+            f"PRIMARY RESCUE SECTOR: Sector {top_zone['zone_id']} (Priority Rank #1)\n"
+            f"PRIORITY SCORE: {top_zone['priority_score']:.4f} (Severity: CRITICAL)\n"
+            f"ESTIMATED COLLAPSED STRUCTURES: {top_zone['destroyed_buildings']} Destroyed, {top_zone['major_damage_buildings']} Major Damage\n"
+            "--------------------------------------------------------------------------------\n"
+            "OPERATIONAL DIRECTIVES:\n"
+            f"1. USAR SQUADS: Dispatch {top_deploy.get('usar_teams_needed', 1)} Heavy Rescue Squad(s) to Sector {top_zone['zone_id']} for immediate survivor search.\n"
+            f"2. MEDICAL EVAC: Mobilize {top_deploy.get('paramedic_units_needed', 1)} Ambulance(s) to perimeter Casualty Collection Point.\n"
+            f"3. INGRESS ACCESS: Clear main access road to Sector {top_zone['zone_id']} using debris squad.\n"
+            "4. SAFETY PERIMETER: Establish 100m perimeter around structurally compromised walls.\n"
+            "================================================================================"
+        )
+        st.code(iap_text, language="text")
+
+    st.markdown("---")
+
+
 def render_building_inventory_table(df_results: pd.DataFrame) -> None:
     """Render tabular building inventory with sorting, search, and class details."""
     st.markdown("### 📋 Detected Building Inventory & Damage Classifications")

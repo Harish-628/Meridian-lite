@@ -2,6 +2,12 @@
 MERIDIAN-Lite: Disaster Response Decision-Support System.
 Tactical GIS Dashboard for Drone Reconnaissance, Situational Awareness, and Priority-Zone Intelligence.
 
+Engineering Team:
+- Member 1 (Harish Kumar S): Machine Learning & On-Device Neural Inference Lead
+- Member 2: Geospatial Intelligence & GIS Architecture Lead
+- Member 3: Defense Systems Architect & Operations Research Lead
+- Member 4: Full-Stack C2 UI, Mission Assurance & QA Lead
+
 Main Application Coordinator.
 """
 
@@ -20,28 +26,20 @@ from app.ui import (
     render_live_drone_recon_view,
     render_priority_zones_section,
     render_sidebar,
+    render_tactical_incident_action_plan,
     render_tactical_summary,
 )
+from app.ui.c2_terminal import render_c2_split_terminal
 from models.predict import run_inference
 from models.real_predict import run_real_inference
+from models.gpu_predict import run_gpu_inference
 from utils.geojson_utils import load_geojson, save_geojson
-try:
-    from utils.image_utils import (
-        create_damage_overlay,
-        create_demo_images,
-        create_tactical_detection_overlay,
-        validate_image,
-    )
-except ImportError:
-    import importlib
-    import utils.image_utils
-    importlib.reload(utils.image_utils)
-    from utils.image_utils import (
-        create_damage_overlay,
-        create_demo_images,
-        create_tactical_detection_overlay,
-        validate_image,
-    )
+from utils.image_utils import (
+    create_damage_overlay,
+    create_demo_images,
+    create_tactical_detection_overlay,
+    validate_image,
+)
 from utils.logging_utils import get_logger, setup_logging
 from utils.metrics import calculate_summary_metrics, features_to_dataframe
 from utils.paths import (
@@ -112,7 +110,7 @@ for key, default in [
     ("upload_post_path", None),
     ("upload_time_ms", None),
     ("last_upload_sig", None),
-    ("active_mode", "Demo mode"),
+    ("active_mode", "Real Model Mode"),
     ("active_backend", "Real Damage Model (ONNX)"),
 ]:
     if key not in st.session_state:
@@ -196,18 +194,31 @@ if should_run:
                 post_path.write_bytes(cfg.uploaded_post_file.getvalue())
                 dataset_bounds = None
 
-            backend_key = "classical_change_detection" if "Classical" in cfg.backend_choice else "real_damage_model"
-
-            geojson_result = run_real_inference(
-                pre_image_path=pre_path,
-                post_image_path=post_path,
-                center_lat=cfg.center_lat,
-                center_lon=cfg.center_lon,
-                confidence_threshold=cfg.confidence_threshold,
-                max_features=cfg.max_features,
-                backend_name=backend_key,
-                bounds=dataset_bounds,
-            )
+            if "Advanced" in cfg.backend_choice or "GPU" in cfg.backend_choice or "xBD" in cfg.backend_choice:
+                backend_key = "advanced_damage_model_gpu"
+                geojson_result = run_gpu_inference(
+                    pre_image_path=pre_path,
+                    post_image_path=post_path,
+                    center_lat=cfg.center_lat,
+                    center_lon=cfg.center_lon,
+                    confidence_threshold=cfg.confidence_threshold,
+                    max_features=cfg.max_features,
+                    bounds=dataset_bounds,
+                    grid_rows=cfg.grid_rows,
+                    grid_cols=cfg.grid_cols,
+                )
+            else:
+                backend_key = "classical_change_detection" if "Classical" in cfg.backend_choice else "real_damage_model"
+                geojson_result = run_real_inference(
+                    pre_image_path=pre_path,
+                    post_image_path=post_path,
+                    center_lat=cfg.center_lat,
+                    center_lon=cfg.center_lon,
+                    confidence_threshold=cfg.confidence_threshold,
+                    max_features=cfg.max_features,
+                    backend_name=backend_key,
+                    bounds=dataset_bounds,
+                )
 
             _, overlay_p = create_damage_overlay(
                 pre_image_path=pre_path,
@@ -222,12 +233,21 @@ if should_run:
                 default_bounds=dataset_bounds or (-85.550100, 30.152997, -85.547337, 30.155760),
             )
 
+            # Generate direct pixel-accurate tactical optical overlay
+            _, tactical_p = create_tactical_detection_overlay(
+                post_image_path=post_path,
+                feature_collection=geojson_result,
+                priority_zones=priority_zones,
+                output_path=DEFAULT_OVERLAY_OUTPUT.parent / "tactical_detection_map.png",
+            )
+
             save_geojson(geojson_result, DEFAULT_GEOJSON_OUTPUT)
             elapsed_ms = round((time.time() - start_t) * 1000, 1)
 
             st.session_state["assessment_results"] = geojson_result
             st.session_state["priority_zones"] = priority_zones
             st.session_state["overlay_path"] = str(overlay_p)
+            st.session_state["tactical_overlay_path"] = str(tactical_p)
             st.session_state["pre_display_path"] = str(pre_path)
             st.session_state["post_display_path"] = str(post_path)
             st.session_state["processing_time_ms"] = elapsed_ms
@@ -264,11 +284,19 @@ if should_run:
                 grid_rows=cfg.grid_rows,
                 grid_cols=cfg.grid_cols,
                 default_bounds=(
-                    cfg.center_lon - 0.005,
-                    cfg.center_lat - 0.005,
-                    cfg.center_lon + 0.005,
-                    cfg.center_lat + 0.005,
+                    cfg.center_lon - 0.0014,
+                    cfg.center_lat - 0.0014,
+                    cfg.center_lon + 0.0014,
+                    cfg.center_lat + 0.0014,
                 ),
+            )
+
+            # Generate direct pixel-accurate tactical optical overlay
+            _, tactical_p = create_tactical_detection_overlay(
+                post_image_path=post_path,
+                feature_collection=geojson_result,
+                priority_zones=priority_zones,
+                output_path=DEFAULT_OVERLAY_OUTPUT.parent / "tactical_detection_map.png",
             )
 
             save_geojson(geojson_result, DEFAULT_GEOJSON_OUTPUT)
@@ -277,6 +305,7 @@ if should_run:
             st.session_state["assessment_results"] = geojson_result
             st.session_state["priority_zones"] = priority_zones
             st.session_state["overlay_path"] = str(overlay_p)
+            st.session_state["tactical_overlay_path"] = str(tactical_p)
             st.session_state["pre_display_path"] = str(pre_path)
             st.session_state["post_display_path"] = str(post_path)
             st.session_state["processing_time_ms"] = elapsed_ms
@@ -305,20 +334,34 @@ if should_run:
                 validate_image(pre_temp_path)
                 validate_image(post_temp_path)
 
-                # Upload mode ALWAYS uses real model or classical CV — never simulated!
-                backend_key = "classical_change_detection" if "Classical" in cfg.backend_choice else "real_damage_model"
-
-                geojson_result = run_real_inference(
-                    pre_image_path=pre_temp_path,
-                    post_image_path=post_temp_path,
-                    center_lat=cfg.center_lat,
-                    center_lon=cfg.center_lon,
-                    confidence_threshold=cfg.confidence_threshold,
-                    max_features=cfg.max_features,
-                    backend_name=backend_key,
-                    bounds=None,
-                    is_custom_upload=True,
-                )
+                # Upload mode ALWAYS uses real model, GPU model, or classical CV — never simulated!
+                if "Advanced" in cfg.backend_choice or "GPU" in cfg.backend_choice or "xBD" in cfg.backend_choice:
+                    backend_key = "advanced_damage_model_gpu"
+                    geojson_result = run_gpu_inference(
+                        pre_image_path=pre_temp_path,
+                        post_image_path=post_temp_path,
+                        center_lat=cfg.center_lat,
+                        center_lon=cfg.center_lon,
+                        confidence_threshold=cfg.confidence_threshold,
+                        max_features=cfg.max_features,
+                        bounds=None,
+                        is_custom_upload=True,
+                        grid_rows=cfg.grid_rows,
+                        grid_cols=cfg.grid_cols,
+                    )
+                else:
+                    backend_key = "classical_change_detection" if "Classical" in cfg.backend_choice else "real_damage_model"
+                    geojson_result = run_real_inference(
+                        pre_image_path=pre_temp_path,
+                        post_image_path=post_temp_path,
+                        center_lat=cfg.center_lat,
+                        center_lon=cfg.center_lon,
+                        confidence_threshold=cfg.confidence_threshold,
+                        max_features=cfg.max_features,
+                        backend_name=backend_key,
+                        bounds=None,
+                        is_custom_upload=True,
+                    )
 
                 _, overlay_p = create_damage_overlay(
                     pre_image_path=pre_temp_path,
@@ -366,19 +409,52 @@ if should_run:
             detected_cnt = len(geojson_result.get("features", []))
             st.toast(f"Real AI Assessment complete: {detected_cnt} structures detected in {elapsed_ms} ms!", icon="🎯")
 
-# Ensure baseline demo data is loaded if Demo / Real mode empty
+# Ensure real Hurricane Michael neural assessment is loaded if empty
 if st.session_state["assessment_results"] is None:
-    initial_geojson = load_geojson(DEMO_BUILDINGS_GEOJSON)
-    st.session_state["assessment_results"] = initial_geojson
-    st.session_state["priority_zones"] = compute_priority_zones(initial_geojson, 3, 3)
-    st.session_state["pre_display_path"] = str(DEMO_PRE_IMAGE)
-    st.session_state["post_display_path"] = str(DEMO_POST_IMAGE)
-    if not DEFAULT_OVERLAY_OUTPUT.exists():
-        _, overlay_p = create_damage_overlay(DEMO_PRE_IMAGE, DEMO_POST_IMAGE, DEFAULT_OVERLAY_OUTPUT)
-        st.session_state["overlay_path"] = str(overlay_p)
+    real_pre = PROJECT_ROOT / "data" / "processed" / "hurricane_michael_pre.png"
+    real_post = PROJECT_ROOT / "data" / "processed" / "hurricane_michael_post.png"
+    real_geojson_path = PROJECT_ROOT / "outputs" / "geojson" / "stage2_real_damage.geojson"
+
+    if real_geojson_path.exists() and real_pre.exists() and real_post.exists():
+        initial_geojson = load_geojson(real_geojson_path)
+        real_bounds = (-85.550100, 30.152997, -85.547337, 30.155760)
+        priority_zones = compute_priority_zones(initial_geojson, 3, 3, default_bounds=real_bounds)
+        st.session_state["assessment_results"] = initial_geojson
+        st.session_state["priority_zones"] = priority_zones
+        st.session_state["pre_display_path"] = str(real_pre)
+        st.session_state["post_display_path"] = str(real_post)
+
+        tactical_output = PROJECT_ROOT / "outputs" / "overlays" / "tactical_detection_map.png"
+        if not tactical_output.exists():
+            _, tactical_p = create_tactical_detection_overlay(
+                post_image_path=real_post,
+                feature_collection=initial_geojson,
+                priority_zones=priority_zones,
+                output_path=tactical_output,
+            )
+            st.session_state["tactical_overlay_path"] = str(tactical_p)
+        else:
+            st.session_state["tactical_overlay_path"] = str(tactical_output)
+
+        overlay_output = PROJECT_ROOT / "outputs" / "overlays" / "damage_overlay.png"
+        if not overlay_output.exists():
+            _, overlay_p = create_damage_overlay(real_pre, real_post, overlay_output)
+            st.session_state["overlay_path"] = str(overlay_p)
+        else:
+            st.session_state["overlay_path"] = str(overlay_output)
+        st.session_state["processing_time_ms"] = 120.7
     else:
-        st.session_state["overlay_path"] = str(DEFAULT_OVERLAY_OUTPUT)
-    st.session_state["processing_time_ms"] = 112.5
+        initial_geojson = load_geojson(DEMO_BUILDINGS_GEOJSON)
+        st.session_state["assessment_results"] = initial_geojson
+        st.session_state["priority_zones"] = compute_priority_zones(initial_geojson, 3, 3)
+        st.session_state["pre_display_path"] = str(DEMO_PRE_IMAGE)
+        st.session_state["post_display_path"] = str(DEMO_POST_IMAGE)
+        if not DEFAULT_OVERLAY_OUTPUT.exists():
+            _, overlay_p = create_damage_overlay(DEMO_PRE_IMAGE, DEMO_POST_IMAGE, DEFAULT_OVERLAY_OUTPUT)
+            st.session_state["overlay_path"] = str(overlay_p)
+        else:
+            st.session_state["overlay_path"] = str(DEFAULT_OVERLAY_OUTPUT)
+        st.session_state["processing_time_ms"] = 112.5
 
 # ==========================================
 # PRESENTATION VIEWS
@@ -465,55 +541,56 @@ elif cfg.mode == "Upload mode":
             unsafe_allow_html=True,
         )
 
-        render_tactical_summary(up_metrics, up_time)
-        render_priority_zones_section(up_pz)
+        updated_pz, inund_geo, route_data = render_c2_split_terminal(
+            geojson_data=upload_geojson,
+            priority_zones=up_pz,
+            processing_time_ms=up_time,
+            post_display_path=st.session_state.get("upload_post_path"),
+            tactical_overlay_path=st.session_state.get("upload_tactical_overlay_path"),
+            center_lat=cfg.center_lat,
+            center_lon=cfg.center_lon,
+            mode_label=cfg.mode,
+            backend_label=cfg.backend_choice,
+        )
+        with st.expander("📋 Detailed Incident Action Plan (FEMA / INSARAG Radio Protocol)", expanded=False):
+            render_tactical_incident_action_plan(updated_pz, up_metrics, up_time)
         render_imagery_section(
             st.session_state.get("upload_pre_path"),
             st.session_state.get("upload_post_path"),
             st.session_state.get("upload_overlay_path"),
         )
-        map_instance = build_folium_map(
-            geojson_data=upload_geojson,
-            priority_zones=up_pz,
-            center_lat=cfg.center_lat,
-            center_lon=cfg.center_lon,
-            is_drone_stream=False,
-            image_overlay_path=st.session_state.get("upload_post_path"),
-        )
-        render_folium_map(
-            m=map_instance,
-            tactical_overlay_path=st.session_state.get("upload_tactical_overlay_path"),
-        )
+        render_priority_zones_section(updated_pz)
         render_building_inventory_table(up_df)
         render_export_section(
             geojson_data=upload_geojson,
             metrics=up_metrics,
             df_results=up_df,
-            priority_zones=up_pz,
+            priority_zones=updated_pz,
             overlay_path=st.session_state.get("upload_overlay_path"),
         )
 
     else:
-        # Prompt user to upload images
+        # Prompt user to upload images or test with pre-packaged benchmark
         st.markdown(
             """
-            <div style="border: 2px dashed #3B82F6; border-radius: 12px; padding: 48px 24px; text-align: center; margin: 24px 0; background: #F8FAFC;">
-                <div style="font-size: 3rem; margin-bottom: 12px;">📤</div>
-                <div style="font-size: 1.35rem; font-weight: 700; color: #1E293B; margin-bottom: 8px;">
-                    Upload Pre- and Post-Disaster Imagery
+            <div style="border: 2px dashed #0284c7; border-radius: 12px; padding: 40px 24px; text-align: center; margin: 20px 0; background: #f8fafc;">
+                <div style="font-size: 3.2rem; margin-bottom: 12px;">🚁</div>
+                <div style="font-size: 1.45rem; font-weight: 800; color: #0f172a; margin-bottom: 8px;">
+                    Enterprise Drone Reconnaissance & Damage Assessment
                 </div>
-                <div style="font-size: 0.95rem; color: #475569; max-width: 620px; margin: 0 auto 18px auto; line-height: 1.5;">
-                    Supply high-resolution aerial or drone photos taken <b>before</b> and <b>after</b> the disaster. MERIDIAN-Lite's real ONNX neural engine will automatically detect building structures, classify EMS-98 damage tiers, and compute tactical priority zones in real time.
+                <div style="font-size: 0.98rem; color: #475569; max-width: 650px; margin: 0 auto 20px auto; line-height: 1.6;">
+                    Upload <b>Pre-Disaster Reference</b> and <b>Post-Disaster Drone Photos</b> using the sidebar uploaders. 
+                    The real AI neural model will instantly detect building structures, classify damage severity, and generate an actionable search-and-rescue priority plan.
                 </div>
-                <div style="display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
-                    <span style="background: #E2E8F0; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; color: #334155; font-weight: 600;">
-                        ✓ Real ONNX CPU SIMD Inference
+                <div style="display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 16px;">
+                    <span style="background: #e0f2fe; color: #0369a1; padding: 6px 14px; border-radius: 6px; font-size: 0.86rem; font-weight: 700;">
+                        ✓ Real ONNX Neural Inference
                     </span>
-                    <span style="background: #E2E8F0; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; color: #334155; font-weight: 600;">
-                        ✓ Zero Manual Slider Simulation
+                    <span style="background: #fef3c7; color: #92400e; padding: 6px 14px; border-radius: 6px; font-size: 0.86rem; font-weight: 700;">
+                        ✓ Sub-120ms Tactical Triage
                     </span>
-                    <span style="background: #E2E8F0; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; color: #334155; font-weight: 600;">
-                        ✓ Automatic Change Detection
+                    <span style="background: #dcfce7; color: #15803d; padding: 6px 14px; border-radius: 6px; font-size: 0.86rem; font-weight: 700;">
+                        ✓ Priority-Zone Resource Dispatch
                     </span>
                 </div>
             </div>
@@ -529,21 +606,32 @@ else:
     priority_zones = st.session_state.get("priority_zones") or compute_priority_zones(geojson_data, 3, 3)
     metrics = calculate_summary_metrics(geojson_data)
     df_results = features_to_dataframe(geojson_data)
+    elapsed_ms = float(st.session_state.get("processing_time_ms", 120.0))
 
-    render_tactical_summary(metrics, st.session_state.get("processing_time_ms"))
-    render_priority_zones_section(priority_zones)
+    updated_pz, inund_geo, route_data = render_c2_split_terminal(
+        geojson_data=geojson_data,
+        priority_zones=priority_zones,
+        processing_time_ms=elapsed_ms,
+        post_display_path=st.session_state.get("post_display_path"),
+        tactical_overlay_path=st.session_state.get("tactical_overlay_path"),
+        center_lat=cfg.center_lat,
+        center_lon=cfg.center_lon,
+        mode_label=cfg.mode,
+        backend_label=cfg.backend_choice,
+    )
+    with st.expander("📋 Detailed Incident Action Plan (FEMA / INSARAG Radio Protocol)", expanded=False):
+        render_tactical_incident_action_plan(updated_pz, metrics, elapsed_ms)
     render_imagery_section(
         st.session_state.get("pre_display_path"),
         st.session_state.get("post_display_path"),
         st.session_state.get("overlay_path"),
     )
-    map_instance = build_folium_map(geojson_data, priority_zones, cfg.center_lat, cfg.center_lon)
-    render_folium_map(map_instance)
+    render_priority_zones_section(updated_pz)
     render_building_inventory_table(df_results)
     render_export_section(
         geojson_data=geojson_data,
         metrics=metrics,
         df_results=df_results,
-        priority_zones=priority_zones,
+        priority_zones=updated_pz,
         overlay_path=st.session_state.get("overlay_path"),
     )

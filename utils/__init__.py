@@ -40,6 +40,18 @@ from utils.paths import (
     ensure_directories,
 )
 from utils.priority import compute_priority_zones, priority_zones_to_geojson
+from utils.prediction import (
+    get_elevation_and_hand,
+    calculate_inundation_probability,
+    recalculate_priority_zones_with_inundation,
+    generate_forecast_inundation_polygons,
+)
+from utils.routing import (
+    build_mexico_beach_road_network,
+    apply_dynamic_hazard_impedance,
+    compute_evacuation_routing,
+    compute_usar_ambulance_dispatch_matrix,
+)
 
 __all__ = [
     "ALLOWED_DAMAGE_CLASSES",

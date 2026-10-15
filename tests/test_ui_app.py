@@ -19,13 +19,14 @@ def app_test():
 
 
 def test_app_loads_without_exceptions(app_test):
-    """Verify the Streamlit dashboard boots and initializes initial demo state without exceptions."""
+    """Verify the Streamlit dashboard boots and initializes real Hurricane Michael inference without exceptions."""
     app_test.run()
     assert not app_test.exception, f"App raised uncaught exceptions on load: {app_test.exception}"
     assert len(app_test.sidebar.radio) > 0, "Sidebar mode radio selector missing"
-    assert "Demo mode" in app_test.sidebar.radio[0].options
+    assert app_test.sidebar.radio[0].value == "Real Model Mode"
     assert "Real Model Mode" in app_test.sidebar.radio[0].options
     assert "Upload mode" in app_test.sidebar.radio[0].options
+    assert "Live Drone Recon Stream" in app_test.sidebar.radio[0].options
 
 
 def test_switch_to_upload_mode(app_test):

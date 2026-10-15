@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
-    { name = "MERIDIAN-Lite Engineering Team" }
+    { name = "Harish Kumar S", email = "lead-ml@meridian.mil" },
+    { name = "Geospatial Intelligence & GIS Architecture Lead" },
+    { name = "Defense Systems Architect & Operations Research Lead" },
+    { name = "Full-Stack C2 UI, Mission Assurance & QA Lead" }
 ]
 keywords = [
     "disaster-response",
@@ -63,6 +66,9 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-q --tb=short"
+markers = [
+    "gpu: marks tests requiring active CUDA execution provider"
+]
 
 [tool.ruff]
 line-length = 100

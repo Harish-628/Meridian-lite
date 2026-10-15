@@ -104,3 +104,30 @@ def test_priority_zones_to_geojson():
     assert "zone_id" in f0["properties"]
     assert "priority_rank" in f0["properties"]
     assert "priority_score" in f0["properties"]
+
+
+def test_priority_multi_criteria_and_resource_allocation():
+    """Verify that compute_priority_zones calculates multi-source parameters (Ez, Iz, Dz, Sz)
+    and greedy USAR/ambulance/debris resource allocations.
+    """
+    feats = [
+        _make_mock_feature(-85.546, 30.179, "destroyed", 0.95),
+        _make_mock_feature(-85.547, 30.178, "destroyed", 0.90),
+        _make_mock_feature(-85.546, 30.178, "major-damage", 0.92),
+        _make_mock_feature(-85.554, 30.171, "minor-damage", 0.85),
+    ]
+    fc = {"type": "FeatureCollection", "features": feats}
+    zones = compute_priority_zones(fc, grid_rows=2, grid_cols=2)
+
+    top_z = zones[0]
+    assert "damage_density" in top_z
+    assert "severe_damage_ratio" in top_z
+    assert "exposed_population_factor" in top_z
+    assert "isolation_factor" in top_z
+    assert "allocated_usar_squads" in top_z
+    assert "allocated_ambulances" in top_z
+    assert "allocated_debris_units" in top_z
+
+    assert top_z["allocated_usar_squads"] >= 1
+    assert top_z["allocated_ambulances"] >= 1
+    assert top_z["allocated_debris_units"] >= 1

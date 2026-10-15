@@ -206,3 +206,15 @@ Open your browser at `http://localhost:8501`.
 - **Model Card & Audits:** See [`docs/model_card.md`](docs/model_card.md), [`outputs/reports/model_provenance_audit.json`](outputs/reports/model_provenance_audit.json), and [`docs/model_selection_decision.md`](docs/model_selection_decision.md).
 - **Inference Hardware:** Executed locally on CPU via `onnxruntime` (`CPUExecutionProvider` SIMD fallback) and OpenCV. No GPU or external cloud connectivity required.
 - **Air-Gapped Operation:** All model inference, geospatial processing, and exports function 100% offline.
+
+---
+
+## 9. Engineering Team & Task Distribution (Innovation Mission 6)
+
+| Team Member | Engineering Role | Core Focus Area & Deliverables |
+|:---|:---|:---|
+| **Harish Kumar S** | Machine Learning & On-Device Neural Inference Lead | Real ONNX bi-temporal CNN (`models/weights/damage_classifier.onnx`), classical CV difference filtering, CPU SIMD inference optimization, model registry. |
+| **Member 2** | Geospatial Intelligence & GIS Architecture Lead | Affine georeferencing WGS84, spatial multi-criteria priority scoring engine ($0.35 D_z + 0.25 S_z + 0.20 E_z + 0.20 I_z$), RFC 7946 GeoJSON compliance. |
+| **Member 3** | Defense Systems Architect & Operations Research Lead | Dynamic NetworkX road impedance routing, $15\text{ m}$ debris occlusion buffer, greedy tactical resource allocator, ICS-201 Incident Action Plan generator. |
+| **Member 4** | Full-Stack C2 UI, Mission Assurance & QA Lead | Streamlit 35/65 C2 Split Terminal layout, synchronized Folium map with collapsed layer controls, live drone recon stream HUD, and Playwright verification suites. |
+

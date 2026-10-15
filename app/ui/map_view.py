@@ -17,12 +17,17 @@ from utils.geojson_utils import DAMAGE_HEX_COLORS, get_bounds
 def build_folium_map(
     geojson_data: dict[str, Any],
     priority_zones: list[dict[str, Any]] | None = None,
-    center_lat: float = 30.154378,
-    center_lon: float = -85.548719,
+    center_lat: float = 30.1750,
+    center_lon: float = -85.5500,
+    zoom_start: int = 15,
     is_drone_stream: bool = False,
     image_overlay_path: str | Path | None = None,
+    inundation_geojson: dict[str, Any] | None = None,
+    routing_geojson: dict[str, Any] | None = None,
 ) -> folium.Map:
-    """Construct an interactive Folium map populated with building polygons, priority zones, and optional aerial imagery overlay."""
+    """Construct an interactive Folium map populated with building polygons, priority zones,
+    predictive inundation layers, dynamic evacuation/infiltration routes, and aerial imagery overlay.
+    """
     features = geojson_data.get("features", []) if isinstance(geojson_data, dict) else []
     all_lats: list[float] = []
     all_lons: list[float] = []
@@ -47,11 +52,11 @@ def build_folium_map(
     else:
         c_lat, c_lon = center_lat, center_lon
 
-    # Initialize map with Esri Satellite as primary basemap
+    # Initialize map with Esri Satellite as primary basemap centered on Mexico Beach
     m = folium.Map(
         location=[c_lat, c_lon],
-        zoom_start=17,
-        tiles=None,  # We add custom tile layers with clean names below
+        zoom_start=zoom_start,
+        tiles=None,
         control_scale=True,
     )
 
@@ -72,22 +77,47 @@ def build_folium_map(
         control=True,
     ).add_to(m)
 
-    # 3. Optional: Overlay the Actual Uploaded Aerial/Drone Photo directly onto map surface
+    # 3. Layer 1: Pre/Post Imagery Footprint Overlay
     if image_overlay_path and Path(image_overlay_path).exists():
         bounds = get_bounds(geojson_data)
         if bounds != [[0.0, 0.0], [0.0, 0.0]]:
             try:
                 folium.raster_layers.ImageOverlay(
-                    name="📸 Uploaded Aerial Image Overlay",
+                    name="📸 1. Pre/Post Drone Imagery Footprint",
                     image=str(image_overlay_path),
                     bounds=bounds,
                     opacity=0.85,
                     interactive=True,
                     zindex=2,
                 ).add_to(m)
-            except Exception as e:
+            except Exception:
                 pass
 
+    # 4. Layer 4: Stage 3 Predictive Inundation Layer
+    if inundation_geojson and inundation_geojson.get("features"):
+        inund_fg = folium.FeatureGroup(name="🌊 4. Stage 3 Predictive Inundation Layer", show=True)
+        for feat in inundation_geojson["features"]:
+            geom = feat.get("geometry", {})
+            props = feat.get("properties", {})
+            color = props.get("fill_color", "#00b4d8")
+            h_label = props.get("horizon", "Forecast")
+            eff_s = props.get("effective_surge_m", 0.0)
+            desc = props.get("description", "Inundation Zone")
+
+            folium.GeoJson(
+                feat,
+                style_function=lambda x, c=color: {
+                    "fillColor": c,
+                    "color": c,
+                    "weight": 1.8,
+                    "fillOpacity": 0.38,
+                },
+                tooltip=f"🌊 {h_label}: {desc} ({eff_s:.1f}m Hydraulic Head)",
+                popup=f"<b>Hydraulic Threat Horizon:</b> {h_label}<br><b>Surge Level:</b> {eff_s:.1f}m<br><b>Status:</b> Impassable Submersion",
+            ).add_to(inund_fg)
+        inund_fg.add_to(m)
+
+    # 5. Layer 2: Detected Damaged Structures
     def style_function(feature: dict[str, Any]) -> dict[str, Any]:
         props = feature.get("properties", {})
         dmg_class = props.get("damage_class", props.get("damage", "no-damage"))
@@ -105,7 +135,6 @@ def build_folium_map(
             "fillOpacity": 0.88,
         }
 
-    # Add building GeoJSON layer
     available_fields = ["damage_class", "confidence"]
     available_aliases = ["Damage Status:", "Confidence:"]
     sample_props = (
@@ -120,9 +149,9 @@ def build_folium_map(
         available_fields.append("is_simulated")
         available_aliases.append("Simulation Mode:")
 
-    folium_geojson = folium.GeoJson(
+    folium.GeoJson(
         geojson_data,
-        name="🏢 Building Footprints & Damage Classification",
+        name="🏢 2. Detected Damaged Structures",
         style_function=style_function,
         highlight_function=highlight_function,
         tooltip=folium.GeoJsonTooltip(
@@ -136,65 +165,113 @@ def build_folium_map(
             aliases=available_aliases,
             localize=True,
         ),
-    )
-    folium_geojson.add_to(m)
+    ).add_to(m)
 
-    # Add Priority Zones Layer
+    # 6. Layer 3: 3x3 Hex/Grid Priority Sectors
     if priority_zones:
-        zone_fg = folium.FeatureGroup(name="🎯 Priority Response Zones", show=True)
+        zone_fg = folium.FeatureGroup(name="🎯 3. 3x3 Priority Response Sectors", show=True)
         for z in priority_zones:
             min_lon, min_lat, max_lon, max_lat = z["bounds"]
-            rank = z["priority_rank"]
-            score = z["priority_score"]
+            rank = z.get("priority_rank", 999)
+            score = z.get("priority_score", 0.0)
             is_rank1 = (rank == 1)
             zone_color = "#dc2626" if is_rank1 else ("#ea580c" if rank <= 3 else "#0284c7")
 
-            # Rectangle boundary
+            # Semi-transparent alpha fill matching triage severity
             folium.Rectangle(
                 bounds=[[min_lat, min_lon], [max_lat, max_lon]],
                 color=zone_color,
                 weight=3.5 if is_rank1 else 2.0,
                 dash_array="6, 6",
                 fill=True,
-                fill_opacity=0.22 if is_rank1 else 0.10,
+                fill_opacity=0.28 if is_rank1 else 0.14,
                 tooltip=f"{'🚨 RESCUE FIRST: ' if is_rank1 else ''}{z['zone_id']} | Rank #{rank} (Score: {score:.3f})",
                 popup=(
                     f"<b>{'🚨 PRIMARY RESCUE SECTOR<br>' if is_rank1 else ''}Zone ID:</b> {z['zone_id']}<br>"
                     f"<b>Priority Rank:</b> #{rank}<br>"
                     f"<b>Priority Score:</b> {score:.4f}<br>"
-                    f"<b>Damaged Structures:</b> {z['damaged_buildings']} / {z['total_buildings']}<br>"
-                    f"<b>Destroyed:</b> {z['destroyed_buildings']}<br>"
-                    f"<b>Major Damage:</b> {z['major_damage_buildings']}<br>"
-                    f"<b>Mean Confidence:</b> {z['mean_confidence']:.1%}<br>"
-                    f"<b>Directive:</b> {z['reason']}"
+                    f"<b>Damaged Structures:</b> {z.get('damaged_buildings', 0)} / {z.get('total_buildings', 0)}<br>"
+                    f"<b>Destroyed:</b> {z.get('destroyed_buildings', 0)}<br>"
+                    f"<b>Major Damage:</b> {z.get('major_damage_buildings', 0)}<br>"
+                    f"<b>Flood Risk:</b> {z.get('flood_risk', 0.0):.1%}<br>"
+                    f"<b>Mean Confidence:</b> {z.get('mean_confidence', 0.0):.1%}<br>"
+                    f"<b>Directive:</b> {z.get('reason', '')}"
                 ),
             ).add_to(zone_fg)
 
             # Center label marker
-            c_lat = (min_lat + max_lat) / 2.0
-            c_lon = (min_lon + max_lon) / 2.0
+            z_c_lat = (min_lat + max_lat) / 2.0
+            z_c_lon = (min_lon + max_lon) / 2.0
             badge_text = f"🚨 RESCUE FIRST: {z['zone_id']}" if is_rank1 else f"Rank #{rank} ({z['zone_id']})"
             badge_bg = "#dc2626" if is_rank1 else "rgba(255, 255, 255, 0.92)"
             badge_fg = "#ffffff" if is_rank1 else "#0f172a"
 
             label_html = (
-                f'<div style="font-size: 9.5pt; font-weight: 800; color: {badge_fg}; '
-                f'background: {badge_bg}; padding: 3px 7px; border-radius: 4px; '
+                f'<div style="font-size: 9pt; font-weight: 800; color: {badge_fg}; '
+                f'background: {badge_bg}; padding: 3px 6px; border-radius: 4px; '
                 f'border: 1.5px solid {zone_color}; white-space: nowrap; box-shadow: 1px 2px 4px rgba(0,0,0,0.3);">'
                 f'{badge_text}'
                 f'</div>'
             )
             folium.Marker(
-                location=[c_lat, c_lon],
+                location=[z_c_lat, z_c_lon],
                 icon=folium.DivIcon(html=label_html),
             ).add_to(zone_fg)
 
         zone_fg.add_to(m)
 
-    # ONLY add drone flight route in Live Drone Recon Stream mode
+    # 7. Layer 5: Stage 2 Evacuation / Infiltration Polyline Route
+    if routing_geojson and routing_geojson.get("features"):
+        route_fg = folium.FeatureGroup(name="🚒 5. Stage 2 Safe Infiltration Route", show=True)
+        for rf in routing_geojson["features"]:
+            coords = rf.get("geometry", {}).get("coordinates", [])
+            props = rf.get("properties", {})
+            r_type = props.get("route_type", "route")
+            color = props.get("color", "#00ff88")
+            dist_km = props.get("distance_km", 0.0)
+            time_mins = props.get("duration_mins", 0.0)
+            label = props.get("label", "Route")
+            is_baseline = ("baseline" in r_type)
+
+            # Flip coordinates to [lat, lon] for Folium
+            latlon_coords = [[pt[1], pt[0]] for pt in coords]
+            folium.PolyLine(
+                locations=latlon_coords,
+                color=color,
+                weight=3.5 if is_baseline else 5.0,
+                dash_array="8, 8" if is_baseline else None,
+                opacity=0.75 if is_baseline else 0.95,
+                tooltip=f"{label} ({dist_km} km, {time_mins} mins)",
+                popup=(
+                    f"<b>{label}</b><br>"
+                    f"Distance: {dist_km} km<br>"
+                    f"Transit Time: {time_mins} mins<br>"
+                    f"Clearance Status: {props.get('clearance_status', 'N/A')}<br>"
+                    f"Detour Penalty: +{props.get('detour_penalty_mins', 0.0)} mins"
+                ),
+            ).add_to(route_fg)
+
+        # Add Staging Base Markers
+        if len(latlon_coords) > 0:
+            start_pt = latlon_coords[0]
+            end_pt = latlon_coords[-1]
+            folium.Marker(
+                location=start_pt,
+                icon=folium.Icon(color="blue", icon="shield", prefix="fa"),
+                tooltip="Staging Base Alpha (West US-98 Insertion Point)",
+            ).add_to(route_fg)
+            folium.Marker(
+                location=end_pt,
+                icon=folium.Icon(color="red", icon="ambulance", prefix="fa"),
+                tooltip="Priority Zone 1 Triage Target",
+            ).add_to(route_fg)
+
+        route_fg.add_to(m)
+
+    # Drone flight route in Live Drone Recon Stream mode
     if is_drone_stream:
         from utils.drone_stream import MISSION_WAYPOINTS
-        route_fg = folium.FeatureGroup(name="Stage 2 Drone Search Route", show=True)
+        drone_fg = folium.FeatureGroup(name="✈️ Stage 2 Drone Recon Route", show=True)
         route_coords = [[wp.lat, wp.lon] for wp in MISSION_WAYPOINTS]
         folium.PolyLine(
             locations=route_coords,
@@ -202,25 +279,11 @@ def build_folium_map(
             weight=3.5,
             dash_array="8, 8",
             tooltip="Autonomous UAV-SAR Search Route",
-        ).add_to(route_fg)
+        ).add_to(drone_fg)
+        drone_fg.add_to(m)
 
-        for wp in MISSION_WAYPOINTS:
-            wp_html = (
-                f'<div style="font-size: 8.5pt; font-weight: bold; color: #0284c7; '
-                f'background: rgba(255, 255, 255, 0.92); padding: 1px 5px; border-radius: 3px; '
-                f'border: 1px solid #0284c7; white-space: nowrap; box-shadow: 1px 1px 2px rgba(0,0,0,0.2);">'
-                f'✈️ {wp.waypoint_id}'
-                f'</div>'
-            )
-            folium.Marker(
-                location=[wp.lat, wp.lon],
-                icon=folium.DivIcon(html=wp_html),
-                tooltip=f"{wp.waypoint_id}: {wp.sector_name}",
-            ).add_to(route_fg)
-
-        route_fg.add_to(m)
-
-    folium.LayerControl(position="topright", collapsed=False).add_to(m)
+    # Keep LayerControl collapsed so it does not obstruct the map and priority sectors
+    folium.LayerControl(position="topright", collapsed=True).add_to(m)
 
     # Fit map bounds to encompass all detected building footprints
     bounds = get_bounds(geojson_data)
