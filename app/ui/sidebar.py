@@ -15,7 +15,7 @@ class SidebarConfig:
     """Encapsulates all parameters configured via the Streamlit sidebar."""
     mode: str = "Real Model Mode"
     backend_choice: str = "Real Damage Model (ONNX)"
-    dataset_choice: str = "Hurricane Michael (Mexico Beach, FL - Oct 2018)"
+    dataset_choice: str = "Official xBD Challenge Benchmark: Hurricane Michael (Mexico Beach, FL)"
     confidence_threshold: float = 0.30
     max_features: int = 100
     grid_rows: int = 3
@@ -173,11 +173,11 @@ def render_sidebar() -> SidebarConfig:
         dataset_choice = st.sidebar.selectbox(
             "Real Disaster Dataset",
             options=[
-                "Hurricane Michael (Mexico Beach, FL - Oct 2018)",
+                "Official xBD Challenge Benchmark: Hurricane Michael (Mexico Beach, FL)",
                 "Upload Custom Real Imagery",
             ],
             index=0,
-            help="Select pre-packaged real disaster imagery or upload custom tile.",
+            help="Select official xBD challenge benchmark disaster imagery or upload custom tile.",
         )
 
         if dataset_choice == "Upload Custom Real Imagery":

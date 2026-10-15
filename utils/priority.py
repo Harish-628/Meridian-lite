@@ -20,12 +20,87 @@ import math
 import numpy as np
 
 
-# Critical landmark coordinates in the Mexico Beach disaster theater
-CRITICAL_LANDMARKS = [
-    {"name": "Emergency Aid Station / Clinic", "lon": -85.5525, "lat": 30.1740, "critical_weight": 1.5},
-    {"name": "Temporary Evacuation Shelter", "lon": -85.5475, "lat": 30.1780, "critical_weight": 2.0},
-    {"name": "Municipal Water / Power Substation", "lon": -85.5490, "lat": 30.1710, "critical_weight": 1.2},
+# Comprehensive Critical Emergency Infrastructure in Mexico Beach disaster theater
+CRITICAL_FACILITIES = [
+    {
+        "id": "FAC-MED-01",
+        "name": "Bay County Emergency Field Hospital & Trauma Center",
+        "facility_type": "hospital",
+        "lon": -85.5525,
+        "lat": 30.1740,
+        "capacity": "45 Acute Trauma Beds / 4 Surgical Bays",
+        "status": "Operational (Designated Triage Hub Alpha)",
+        "icon": "plus",
+        "marker_color": "red",
+        "critical_weight": 2.5,
+    },
+    {
+        "id": "FAC-SHL-01",
+        "name": "FEMA / Red Cross Evacuation Shelter & Relief Depot",
+        "facility_type": "shelter",
+        "lon": -85.5475,
+        "lat": 30.1780,
+        "capacity": "350 Evacuees / Food, Water & Generator Power",
+        "status": "Active Intake & Humanitarian Hub",
+        "icon": "home",
+        "marker_color": "blue",
+        "critical_weight": 2.0,
+    },
+    {
+        "id": "FAC-FIRE-01",
+        "name": "Mexico Beach Fire & USAR Station #1",
+        "facility_type": "fire_station",
+        "lon": -85.5450,
+        "lat": 30.1650,
+        "capacity": "4 Heavy Rescue Trucks / Structural Shoring Kits",
+        "status": "Active Rescue Dispatch",
+        "icon": "fire",
+        "marker_color": "orange",
+        "critical_weight": 1.8,
+    },
+    {
+        "id": "FAC-UTIL-01",
+        "name": "Municipal Emergency Power & Water Substation",
+        "facility_type": "utility",
+        "lon": -85.5490,
+        "lat": 30.1710,
+        "capacity": "Industrial Generator Backup / Potable Water Reserves",
+        "status": "Operational (Lifeline Infrastructure)",
+        "icon": "bolt",
+        "marker_color": "purple",
+        "critical_weight": 1.5,
+    },
+    {
+        "id": "FAC-FOB-01",
+        "name": "Forward Operating Base (FOB) Alpha Helipad",
+        "facility_type": "helipad",
+        "lon": -85.5510,
+        "lat": 30.1530,
+        "capacity": "2 Air Ambulance Helipads / Forward Staging Base",
+        "status": "Active Medevac Perimeter",
+        "icon": "plane",
+        "marker_color": "darkblue",
+        "critical_weight": 2.2,
+    },
 ]
+
+# Backward compatibility alias
+CRITICAL_LANDMARKS = CRITICAL_FACILITIES
+
+
+def haversine_km(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
+    """Calculate the great-circle distance between two GPS coordinates in kilometers."""
+    r = 6371.0
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    a = (
+        math.sin(delta_phi / 2.0) ** 2
+        + math.cos(phi1) * math.cos(phi2) * (math.sin(delta_lambda / 2.0) ** 2)
+    )
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(max(0.0, 1.0 - a)))
+    return round(r * c, 3)
 
 
 def allocate_tactical_resources(
@@ -256,7 +331,34 @@ def compute_priority_zones(
         dmg = z["damaged_buildings"]
         dest = z["destroyed_buildings"]
         major = z["major_damage_buildings"]
+        minor_dmg = z.get("minor_damage_buildings", 0)
         conf = z["mean_confidence"]
+
+        # Determine zone center and calculate distance to critical facilities
+        z_b = z["bounds"]
+        z_c_lon = (z_b[0] + z_b[2]) / 2.0
+        z_c_lat = (z_b[1] + z_b[3]) / 2.0
+
+        nearest_fac = "Bay County Emergency Field Hospital & Trauma Center"
+        min_fac_dist = 999.0
+        nearest_hosp = "Bay County Emergency Field Hospital & Trauma Center"
+        min_hosp_dist = 999.0
+        facs_in_zone = []
+
+        for fac in CRITICAL_FACILITIES:
+            dist = haversine_km(z_c_lon, z_c_lat, fac["lon"], fac["lat"])
+            if dist < min_fac_dist:
+                min_fac_dist = dist
+                nearest_fac = fac["name"]
+            if fac.get("facility_type") == "hospital" and dist < min_hosp_dist:
+                min_hosp_dist = dist
+                nearest_hosp = fac["name"]
+            if z_b[0] <= fac["lon"] <= z_b[2] and z_b[1] <= fac["lat"] <= z_b[3]:
+                facs_in_zone.append(fac["name"])
+
+        resident_pop = z["estimated_population"]
+        vulnerable_pop = int(round(resident_pop * 0.22))
+        est_casualties = int(round(dest * 1.2 + major * 0.5 + minor_dmg * 0.1))
 
         if tot == 0:
             # Empty zone
@@ -272,7 +374,15 @@ def compute_priority_zones(
                 "destroyed_buildings": 0,
                 "major_damage_buildings": 0,
                 "estimated_population": 0,
+                "vulnerable_population": 0,
+                "estimated_casualties": 0,
                 "critical_landmarks": [],
+                "facilities_in_zone": facs_in_zone,
+                "nearest_facility": nearest_fac,
+                "facility_distance_km": round(min_fac_dist, 2),
+                "nearest_hospital": nearest_hosp,
+                "hospital_distance_km": round(min_hosp_dist, 2),
+                "transit_time_mins": 2.0,
                 "mean_confidence": 0.0,
                 "bounds": z["bounds"],
                 "reason": "No detected structures in zone footprint.",
@@ -293,7 +403,6 @@ def compute_priority_zones(
         exposed_factor = min(1.0, max(0.2, raw_exposure / max_raw_exposure))
 
         # 4. Isolation Factor (I_z): road blockade and severe rubble impact
-        # High structural collapse generates road blockades that isolate survivors
         isolation_factor = min(1.0, 0.4 * damage_density + 0.6 * severe_ratio)
         if dest > 0:
             isolation_factor = max(isolation_factor, 0.70)
@@ -307,15 +416,18 @@ def compute_priority_zones(
         )
         score = round(float(raw_score), 4)
 
-        # Build human-readable operational reason
+        # Realistic transit time in minutes: 35 km/h transit + rubble isolation penalty
+        transit_time_mins = round((min_hosp_dist / 35.0 * 60.0) + (isolation_factor * 8.5), 1)
+
+        # Build human-readable operational reason with demographic and routing context
         if dest > 0 and major > 0:
-            reason = f"Critical severe structural destruction: {dest} destroyed, {major} major damage."
+            reason = f"Critical severe structural destruction: {dest} destroyed, {major} major damage. {est_casualties} est. casualties among {resident_pop} residents ({vulnerable_pop} vulnerable). Route to {nearest_hosp}: {min_hosp_dist:.2f} km ({transit_time_mins} mins)."
         elif dest > 0:
-            reason = f"High structural collapse risk: {dest} destroyed buildings detected."
+            reason = f"High structural collapse risk: {dest} destroyed buildings. {est_casualties} est. casualties. Transit to {nearest_hosp}: {transit_time_mins} mins."
         elif major > 0:
-            reason = f"Significant structural compromise: {major} major damaged structures."
+            reason = f"Significant structural compromise: {major} major damaged structures. {resident_pop} residents exposed."
         elif dmg > 0:
-            reason = f"Moderate impact: {dmg} damaged buildings ({damage_density:.0%} damage density)."
+            reason = f"Moderate impact: {dmg} damaged buildings ({damage_density:.0%} damage density). {resident_pop} residents."
         else:
             reason = f"All {tot} structures identified as undamaged."
 
@@ -330,8 +442,16 @@ def compute_priority_zones(
             "damaged_buildings": dmg,
             "destroyed_buildings": dest,
             "major_damage_buildings": major,
-            "estimated_population": z["estimated_population"],
+            "estimated_population": resident_pop,
+            "vulnerable_population": vulnerable_pop,
+            "estimated_casualties": est_casualties,
             "critical_landmarks": z["critical_landmarks"],
+            "facilities_in_zone": facs_in_zone,
+            "nearest_facility": nearest_fac,
+            "facility_distance_km": round(min_fac_dist, 2),
+            "nearest_hospital": nearest_hosp,
+            "hospital_distance_km": round(min_hosp_dist, 2),
+            "transit_time_mins": transit_time_mins,
             "mean_confidence": round(conf, 4),
             "bounds": z["bounds"],
             "reason": reason,
@@ -349,8 +469,6 @@ def compute_priority_zones(
 
     # Compute greedy resource allocation across the ranked zones
     scored_zones = allocate_tactical_resources(scored_zones)
-
-    return scored_zones
 
     return scored_zones
 

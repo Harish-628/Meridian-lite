@@ -127,45 +127,58 @@ def render_priority_zones_section(priority_zones: list[dict[str, Any]]) -> None:
         unsafe_allow_html=True,
     )
 
-    pz_c1, pz_c2, pz_c3, pz_c4 = st.columns(4)
+    pz_c1, pz_c2, pz_c3, pz_c4, pz_c5 = st.columns(5)
     with pz_c1:
-        st.metric("Top Priority Zone", top_zone["zone_id"], help="Highest-need triage sector.")
+        st.metric("Top Priority Sector", top_zone["zone_id"], help="Highest-need triage sector.")
     with pz_c2:
         st.metric(
             "Priority Score",
             f"{top_zone['priority_score']:.3f}",
             delta="Rank #1",
-            help="Normalized urgency score [0.0 - 1.0].",
+            help="Multi-criteria triage score [0.0 - 1.0].",
         )
     with pz_c3:
         st.metric(
-            "Severe Structures",
-            f"{severe_count}",
-            help="Destroyed + major damage count in top zone.",
+            "Exposed Population",
+            f"{top_zone.get('estimated_population', 0)} occupants",
+            delta=f"{top_zone.get('vulnerable_population', 0)} vulnerable",
+            help="Estimated resident population and high-vulnerability citizens.",
         )
     with pz_c4:
         st.metric(
-            "Total Affected",
-            f"{top_zone['damaged_buildings']} / {top_zone['total_buildings']}",
-            help="Damaged buildings vs total in top zone.",
+            "Estimated Casualties",
+            f"{top_zone.get('estimated_casualties', 0)}",
+            delta=f"{severe_count} severe collapses",
+            delta_color="inverse",
+            help="Estimated trapped or injured persons based on structural collapse model.",
+        )
+    with pz_c5:
+        st.metric(
+            "Transit to Hospital",
+            f"{top_zone.get('transit_time_mins', 3.0)} mins",
+            delta=f"{top_zone.get('hospital_distance_km', 1.0):.2f} km",
+            help="Estimated ambulance transit time along cleared safe corridors.",
         )
 
-    # Format zones table with rescue allocations
+    # Format zones table with Mission 6 Core: Population, Facilities, and Routing
     pz_rows = []
     for z in priority_zones:
         # Find matching deployment
         d = next((item for item in deployments if item["zone_id"] == z["zone_id"]), {})
         pz_rows.append({
             "Priority Rank": f"Rank #{z['priority_rank']}",
-            "Zone ID": z["zone_id"],
-            "Priority Score": f"{z['priority_score']:.4f}",
+            "Sector ID": z["zone_id"],
+            "Priority Score": f"{z['priority_score']:.3f}",
             "Structures": z["total_buildings"],
-            "Damaged": z["damaged_buildings"],
-            "Severe": z["destroyed_buildings"] + z["major_damage_buildings"],
-            "USAR Teams": f"🪖 {d.get('usar_teams_needed', 0)}",
-            "Ambulances": f"🚑 {d.get('paramedic_units_needed', 0)}",
-            "Urgency": d.get("dispatch_urgency", "Normal"),
-            "Tactical Action": d.get("action_directive", z.get("reason", "Standard survey")),
+            "Severe Damage": z["destroyed_buildings"] + z["major_damage_buildings"],
+            "Exposed Pop": f"{z.get('estimated_population', 0)} ({z.get('vulnerable_population', 0)} vuln)",
+            "Est. Casualties": f"⚠️ {z.get('estimated_casualties', 0)}",
+            "Nearest Facility": z.get("nearest_facility", "Field Hospital"),
+            "Facility Dist": f"{z.get('facility_distance_km', 1.0):.2f} km",
+            "Transit Time": f"{z.get('transit_time_mins', 3.0)} min",
+            "USAR Teams": f"🪖 {z.get('allocated_usar_squads', d.get('usar_teams_needed', 0))}",
+            "Ambulances": f"🚑 {z.get('allocated_ambulances', d.get('paramedic_units_needed', 0))}",
+            "Tactical Action Directive": z.get("reason", d.get("action_directive", "Standard sweep")),
         })
     df_zones = pd.DataFrame(pz_rows)
     st.dataframe(df_zones, width="stretch", hide_index=True)

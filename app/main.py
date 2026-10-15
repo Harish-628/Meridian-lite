@@ -178,7 +178,7 @@ if should_run:
         logger.info(f"Executing assessment in Real Model Mode with {cfg.backend_choice}...")
         start_t = time.time()
         with st.spinner("Executing real disaster model inference and priority zone scoring..."):
-            if cfg.dataset_choice == "Hurricane Michael (Mexico Beach, FL - Oct 2018)":
+            if "Hurricane Michael" in cfg.dataset_choice or "xBD" in cfg.dataset_choice:
                 pre_path = PROJECT_ROOT / "data" / "processed" / "hurricane_michael_pre.png"
                 post_path = PROJECT_ROOT / "data" / "processed" / "hurricane_michael_post.png"
                 dataset_bounds = (-85.550100, 30.152997, -85.547337, 30.155760)

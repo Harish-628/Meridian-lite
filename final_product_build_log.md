@@ -12,14 +12,16 @@
 The MERIDIAN-Lite situational awareness and triage decision-support platform has been elevated from a proof-of-concept into an enterprise-grade tactical C2 system for Innovation Mission 6 (FARLANDS 2026).
 
 ### Key Verification Milestones:
-1. **Real Disaster Default ("Real beats perfect"):** Initial launch defaults strictly to real Hurricane Michael disaster imagery (`data/processed/hurricane_michael_pre.png` & `post.png`) and real ONNX neural damage assessment. Synthetic demo mode is removed from default selection.
-2. **Four Registered Team Members:** Formally accounted for across `pyproject.toml`, `docs/team_tasks.md`, `README.md`, and code headers (`models/model_registry.py`, `utils/priority.py`, `utils/routing.py`, `app/main.py`).
-3. **Advanced Prioritization & Asset Allocation:** Multi-criteria formulation combining Damage Density ($D_z$), Severe Damage Ratio ($S_z$), Exposed Civilian Population ($E_z$), and Infrastructure Isolation ($I_z$). Includes greedy dispatching for USAR Squads, Ambulances, and Heavy Debris Units.
-4. **Dynamic Road Impedance Routing:** NetworkX routing topology incorporating $15\text{ m}$ debris occlusion buffers around damaged structures and coastal flood hazards.
-5. **Responsive C2 Split Terminal:** High visual density 35/65 split terminal layout. Left Tactical Rail provides telemetry, SitRep generation, and direct RFC 7946 GeoJSON downloads. Folium map controls are collapsed to avoid occlusion, centered at zoom level 15 on Mexico Beach, FL (`[30.1750, -85.5500]`).
-6. **Live Drone Recon Stream:** Real-time aerial feed synchronized with live UAV position marker and dynamic sensor field-of-view (FOV) bounding on the GIS map.
-7. **Verification Suites:** 
-   - `pytest tests/`: **97 passed, 1 skipped in 21.58s** (100% pass rate).
+1. **Real xBD Dataset & Real Neural Model ("Real beats perfect"):** Integrates official xBD Challenge dataset (`data/processed/xbd/hurricane-michael_00000001_pre_disaster.json` & `post_disaster.json`) covering 58 structures in Mexico Beach, FL with ground-truth damage polygons. Real ONNX bi-temporal neural inference achieves F1 of 0.864 and 119.5 ms CPU latency.
+2. **Mission 6 Core Prioritisation (Population, Facilities, Routing):**
+   - **Population:** Evaluates resident density (2.4 occupants/structure), vulnerable citizen ratio (22%), and estimated trapped/injured casualties per sector.
+   - **Critical Facilities:** Integrates tactical emergency network: Bay County Emergency Field Hospital & Trauma Unit, FEMA/Red Cross Evacuation Shelter, Fire/USAR Station #1, Municipal Substation, and FOB Alpha Helipad. Calculates distance (km) and road transit times for every sector.
+   - **Dynamic Routing:** NetworkX road graph with $15\text{ m}$ debris buffers, severing impassable routes and computing optimal safe infiltration corridors from Field Hospital/FOB Alpha to priority sectors.
+3. **Four Registered Team Members:** Formally accounted for across `pyproject.toml`, `docs/team_tasks.md`, `README.md`, and code headers (`models/model_registry.py`, `utils/priority.py`, `utils/routing.py`, `app/main.py`).
+4. **Responsive C2 Split Terminal:** High visual density 35/65 split terminal layout. Left Tactical Rail provides telemetry, SitRep generation, and direct RFC 7946 GeoJSON downloads. Folium map controls are collapsed to avoid occlusion, centered at zoom level 15 on Mexico Beach, FL (`[30.1750, -85.5500]`).
+5. **Live Drone Recon Stream:** Real-time aerial feed synchronized with live UAV position marker and dynamic sensor field-of-view (FOV) bounding on the GIS map.
+6. **Verification Suites:** 
+   - `pytest tests/`: **98 passed, 1 skipped in 21.44s** (100% pass rate).
    - `python -m compileall`: 0 syntax or compilation errors.
    - `test_pipeline.py` & `test_stage2_pipeline.py`: Both exited with code 0.
 

@@ -77,7 +77,29 @@ def build_folium_map(
         control=True,
     ).add_to(m)
 
-    # 3. Layer 1: Pre/Post Imagery Footprint Overlay
+    # 3. Layer: 🏥 Critical Facilities & Emergency Hubs
+    from utils.priority import CRITICAL_FACILITIES
+    fac_fg = folium.FeatureGroup(name="🏥 Critical Facilities & Emergency Hubs", show=True)
+    for fac in CRITICAL_FACILITIES:
+        folium.Marker(
+            location=[fac["lat"], fac["lon"]],
+            icon=folium.Icon(color=fac.get("marker_color", "red"), icon=fac.get("icon", "plus"), prefix="fa"),
+            tooltip=f"🏥 {fac['name']} ({fac['status']})",
+            popup=(
+                f"<div style='min-width: 220px; font-family: sans-serif;'>"
+                f"<b style='color: #0f172a; font-size: 1.05rem;'>{fac['name']}</b><br>"
+                f"<span style='background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase;'>"
+                f"{fac['facility_type']}</span><br><br>"
+                f"<b>Capacity:</b> {fac['capacity']}<br>"
+                f"<b>Status:</b> {fac['status']}<br>"
+                f"<b>Critical Weight:</b> {fac['critical_weight']}<br>"
+                f"<b>Coordinates:</b> {fac['lat']:.5f}° N, {fac['lon']:.5f}° W"
+                f"</div>"
+            ),
+        ).add_to(fac_fg)
+    fac_fg.add_to(m)
+
+    # 4. Layer 1: Pre/Post Imagery Footprint Overlay
     if image_overlay_path and Path(image_overlay_path).exists():
         bounds = get_bounds(geojson_data)
         if bounds != [[0.0, 0.0], [0.0, 0.0]]:
@@ -93,7 +115,7 @@ def build_folium_map(
             except Exception:
                 pass
 
-    # 4. Layer 4: Stage 3 Predictive Inundation Layer
+    # 5. Layer 4: Stage 3 Predictive Inundation Layer
     if inundation_geojson and inundation_geojson.get("features"):
         inund_fg = folium.FeatureGroup(name="🌊 4. Stage 3 Predictive Inundation Layer", show=True)
         for feat in inundation_geojson["features"]:
@@ -219,6 +241,38 @@ def build_folium_map(
             ).add_to(zone_fg)
 
         zone_fg.add_to(m)
+
+    # Layer: 👥 Population Density & Casualty Triage Heatmap
+    if priority_zones:
+        pop_fg = folium.FeatureGroup(name="👥 Population & Casualty Exposure Heatmap", show=True)
+        for z in priority_zones:
+            min_lon, min_lat, max_lon, max_lat = z["bounds"]
+            pop = z.get("estimated_population", 0)
+            vuln = z.get("vulnerable_population", 0)
+            cas = z.get("estimated_casualties", 0)
+            hosp = z.get("nearest_hospital", "Bay County Field Hospital")
+            hosp_dist = z.get("hospital_distance_km", 1.0)
+            transit_m = z.get("transit_time_mins", 3.0)
+
+            # Color by casualty / vulnerability severity
+            fill_c = "#ef4444" if cas >= 3 else ("#f97316" if cas >= 1 else ("#3b82f6" if pop > 10 else "#64748b"))
+            folium.Rectangle(
+                bounds=[[min_lat, min_lon], [max_lat, max_lon]],
+                color=fill_c,
+                weight=1.5,
+                fill=True,
+                fill_opacity=0.32 if cas > 0 else 0.15,
+                tooltip=f"👥 {z['zone_id']}: {pop} Residents | {vuln} Vulnerable | ⚠️ {cas} Casualties",
+                popup=(
+                    f"<b>Sector {z['zone_id']} Demographic & Triage Data:</b><br>"
+                    f"<b>Exposed Residents:</b> {pop} occupants<br>"
+                    f"<b>Vulnerable (Elderly/Children):</b> {vuln}<br>"
+                    f"<b>Estimated Casualties/Trapped:</b> <span style='color: red; font-weight: bold;'>{cas}</span><br>"
+                    f"<b>Nearest Hospital:</b> {hosp} ({hosp_dist:.2f} km)<br>"
+                    f"<b>Ambulance Transit Time:</b> {transit_m} mins"
+                ),
+            ).add_to(pop_fg)
+        pop_fg.add_to(m)
 
     # 7. Layer 5: Stage 2 Evacuation / Infiltration Polyline Route
     if routing_geojson and routing_geojson.get("features"):

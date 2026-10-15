@@ -68,13 +68,24 @@ def main() -> int:
             meta = json.load(f)
         assert meta["disaster_name"] == "Hurricane Michael"
 
+        # Verify Official xBD Challenge Dataset Format
+        xbd_pre = PROJECT_ROOT / "data" / "processed" / "xbd" / "hurricane-michael_00000001_pre_disaster.json"
+        xbd_post = PROJECT_ROOT / "data" / "processed" / "xbd" / "hurricane-michael_00000001_post_disaster.json"
+        xbd_eval = PROJECT_ROOT / "data" / "processed" / "xbd" / "xbd_benchmark_eval.json"
+        assert xbd_pre.exists() and xbd_post.exists() and xbd_eval.exists()
+
+        with open(xbd_post, "r") as f:
+            xbd_data = json.load(f)
+        assert len(xbd_data["features"]["lng_lat"]) > 0
+        assert xbd_data["metadata"]["disaster"] == "hurricane-michael"
+
         checks.append((
-            "Real Dataset Audit",
+            "Real xBD Dataset Audit",
             True,
-            f"Hurricane Michael tile 1024x1024 ({meta['location']})",
+            f"Official xBD format verified ({len(xbd_data['features']['lng_lat'])} structures, Mexico Beach, FL)",
         ))
     except Exception as exc:
-        checks.append(("Real Dataset Audit", False, str(exc)))
+        checks.append(("Real xBD Dataset Audit", False, str(exc)))
         print(f"[FAIL] Dataset audit failed: {exc}")
         return 1
 
@@ -163,7 +174,7 @@ def main() -> int:
         print(f"[FAIL] Georeferencing check failed: {exc}")
         return 1
 
-    # 7. Priority-Zone Scoring Engine
+    # 7. Mission 6 Core Prioritisation Engine (Population, Facilities, Routing)
     try:
         zones = compute_priority_zones(fc_onnx, grid_rows=3, grid_cols=3)
         assert len(zones) == 9
@@ -172,18 +183,40 @@ def main() -> int:
         assert 0.0 <= top_zone["priority_score"] <= 1.0
         assert top_zone["priority_score"] >= zones[-1]["priority_score"]
 
+        # Mission 6 Core Verification: Population, Facilities, Routing
+        assert "estimated_population" in top_zone
+        assert "vulnerable_population" in top_zone
+        assert "estimated_casualties" in top_zone
+        assert "nearest_facility" in top_zone
+        assert "hospital_distance_km" in top_zone
+        assert "transit_time_mins" in top_zone
+        assert top_zone["hospital_distance_km"] > 0.0
+        assert top_zone["transit_time_mins"] > 0.0
+
+        # Dynamic Road Impedance Routing
+        from utils.routing import (
+            build_mexico_beach_road_network,
+            apply_dynamic_hazard_impedance,
+            compute_evacuation_routing,
+        )
+        G = build_mexico_beach_road_network()
+        G, r_stats = apply_dynamic_hazard_impedance(G, fc_onnx.get("features", []))
+        route_res = compute_evacuation_routing(G, (-85.5510, 30.1530), (-85.5487, 30.1544))
+        assert "metrics" in route_res
+        assert route_res["metrics"]["safe_route_distance_km"] > 0.0
+
         # Validate GeoJSON export
         pz_geojson = priority_zones_to_geojson(zones)
         validate_feature_collection(pz_geojson)
 
         checks.append((
-            "Priority-Zone Scoring Engine",
+            "Mission 6 Core Prioritisation",
             True,
-            f"Rank #1: {top_zone['zone_id']} (Score: {top_zone['priority_score']:.4f})",
+            f"Pop: {top_zone['estimated_population']}, Cas: {top_zone['estimated_casualties']}, Hosp: {top_zone['hospital_distance_km']:.2f}km, Transit: {top_zone['transit_time_mins']}m",
         ))
     except Exception as exc:
-        checks.append(("Priority-Zone Scoring Engine", False, str(exc)))
-        print(f"[FAIL] Priority-zone scoring failed: {exc}")
+        checks.append(("Mission 6 Core Prioritisation", False, str(exc)))
+        print(f"[FAIL] Mission 6 prioritisation check failed: {exc}")
         return 1
 
     # 8. Output Serialization

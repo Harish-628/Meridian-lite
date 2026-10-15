@@ -131,3 +131,28 @@ def test_priority_multi_criteria_and_resource_allocation():
     assert top_z["allocated_usar_squads"] >= 1
     assert top_z["allocated_ambulances"] >= 1
     assert top_z["allocated_debris_units"] >= 1
+
+
+def test_population_facilities_routing_integration():
+    """Verify Mission 6 core triage integration: population, critical facilities, and transit times."""
+    feats = [
+        _make_mock_feature(-85.550, 30.175, "destroyed", 0.95),
+        _make_mock_feature(-85.551, 30.174, "major-damage", 0.91),
+        _make_mock_feature(-85.550, 30.174, "no-damage", 0.88),
+    ]
+    fc = {"type": "FeatureCollection", "features": feats}
+    zones = compute_priority_zones(fc, grid_rows=2, grid_cols=2)
+
+    z1 = zones[0]
+    assert "estimated_population" in z1
+    assert "vulnerable_population" in z1
+    assert "estimated_casualties" in z1
+    assert "nearest_facility" in z1
+    assert "hospital_distance_km" in z1
+    assert "transit_time_mins" in z1
+
+    assert z1["estimated_population"] >= 2
+    assert z1["estimated_casualties"] >= 1
+    assert z1["hospital_distance_km"] > 0.0
+    assert z1["transit_time_mins"] > 0.0
+
