@@ -118,6 +118,7 @@ class AffineGeoreferencer:
             pass
 
         props = dict(properties or {})
+        props.setdefault("pixel_polygon", [[float(pt[0]), float(pt[1])] for pt in pixel_points])
         props.setdefault("coordinate_source", self.coordinate_source)
         props.setdefault("crs", self.crs)
 

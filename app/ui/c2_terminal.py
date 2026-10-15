@@ -388,18 +388,37 @@ Dispatch Directive: Deploy {z1_usar} USAR Squad(s) & {z1_amb} Ambulance(s) from 
         )
 
         # Dual-view tab container
+        is_upload = "Upload" in str(mode_label)
         if tactical_overlay_path and Path(tactical_overlay_path).exists():
-            tab_map, tab_hud = st.tabs([
-                "🛰️ C2 Situational Awareness GIS (5-Layer Integrated Map)",
-                "🎯 Tactical Optical Detection HUD (Direct Imagery Overlay)",
-            ])
-            with tab_map:
-                try:
-                    st_folium(c2_map, width="100%", height=620, returned_objects=[])
-                except Exception as exc:
-                    st.warning(f"GIS rendering fallback: {exc}")
-            with tab_hud:
-                st.image(str(tactical_overlay_path), width="stretch")
+            if is_upload:
+                tab_hud, tab_map = st.tabs([
+                    "🎯 Tactical Optical Detection HUD (Direct Drone Imagery)",
+                    "🛰️ Geospatial Projection & GIS Reference Map",
+                ])
+                with tab_hud:
+                    st.image(str(tactical_overlay_path), width="stretch")
+                    st.caption("🔍 Pixel-registered optical damage triage directly on your uploaded drone imagery.")
+                with tab_map:
+                    st.info(
+                        f"🛰️ **Geospatial Reference Projection**: Tactical survey footprint is projected to mission reference coordinates "
+                        f"({center_lat:.4f}, {center_lon:.4f}). High-resolution optical triage is rendered directly on your native drone pixels in the primary tab above."
+                    )
+                    try:
+                        st_folium(c2_map, width="100%", height=560, returned_objects=[])
+                    except Exception as exc:
+                        st.warning(f"GIS rendering fallback: {exc}")
+            else:
+                tab_map, tab_hud = st.tabs([
+                    "🛰️ C2 Situational Awareness GIS (5-Layer Integrated Map)",
+                    "🎯 Tactical Optical Detection HUD (Direct Imagery Overlay)",
+                ])
+                with tab_map:
+                    try:
+                        st_folium(c2_map, width="100%", height=620, returned_objects=[])
+                    except Exception as exc:
+                        st.warning(f"GIS rendering fallback: {exc}")
+                with tab_hud:
+                    st.image(str(tactical_overlay_path), width="stretch")
         else:
             try:
                 st_folium(c2_map, width="100%", height=620, returned_objects=[])

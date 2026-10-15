@@ -109,12 +109,12 @@ class ClassicalChangeDetectionBackend(ModelBackend):
         for c in cnts:
             area = cv2.contourArea(c)
             # Filter non-building noise or massive landscape changes
-            if not (150 < area < 45000):
+            if not (120 < area < 25000):
                 continue
 
             bx, by, bw, bh = cv2.boundingRect(c)
             aspect = float(bw) / max(bh, 1)
-            if not (0.2 <= aspect <= 5.0):
+            if not (0.25 <= aspect <= 4.0):
                 continue
 
             # Compute contour mask and change statistics
@@ -157,8 +157,8 @@ class ClassicalChangeDetectionBackend(ModelBackend):
                 continue
 
             # Approximate polygon geometry (Douglas-Peucker)
-            epsilon = 0.02 * perimeter
-            approx = cv2.approxPolyDP(c, max(epsilon, 2.0), True)
+            epsilon = 0.03 * perimeter
+            approx = cv2.approxPolyDP(c, max(epsilon, 3.0), True)
             pts = [(float(pt[0][0]), float(pt[0][1])) for pt in approx]
             if len(pts) < 3:
                 # Fallback to rectangle points
@@ -180,6 +180,8 @@ class ClassicalChangeDetectionBackend(ModelBackend):
                 "model_version": self.version,
                 "pixel_area": float(area),
                 "mean_spectral_diff": round(mean_diff, 2),
+                "pixel_polygon": [[float(pt[0]), float(pt[1])] for pt in pts],
+                "pixel_bbox": [int(bx), int(by), int(bw), int(bh)],
             }
 
             geojson_feat = georeferencer.to_geojson_polygon(pts, feature_props)
@@ -368,23 +370,35 @@ class RealDamageModelBackend(ModelBackend):
         blurred = cv2.medianBlur(diff, 5)
         _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-        closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
+        opened = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel, iterations=2)
 
         cnts, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        candidate_boxes: list[Tuple[int, int, int, int, list[Tuple[float, float]], float]] = []
+        candidate_boxes: list[Tuple[int, int, int, int, list[Tuple[float, float]], float, float, float]] = []
         for c in cnts:
             area = cv2.contourArea(c)
-            if not (120 < area < 45000):
+            if not (120 < area < 25000):
                 continue
             bx, by, bw, bh = cv2.boundingRect(c)
             aspect = float(bw) / max(bh, 1)
-            if not (0.2 <= aspect <= 5.0):
+            if not (0.25 <= aspect <= 4.0):
                 continue
 
+            # Compute contour mask difference and edge statistics
+            c_mask = np.zeros((h, w), dtype=np.uint8)
+            cv2.drawContours(c_mask, [c], -1, 255, -1)
+            mean_diff = float(cv2.mean(diff, mask=c_mask)[0])
+
+            pre_crop = pre_gray[by:by+bh, bx:bx+bw]
+            post_crop = post_gray[by:by+bh, bx:bx+bw]
+            pre_edges = np.count_nonzero(cv2.Canny(pre_crop, 50, 150))
+            post_edges = np.count_nonzero(cv2.Canny(post_crop, 50, 150))
+            edge_ratio = float(post_edges) / max(float(pre_edges), 1.0)
+
             perimeter = cv2.arcLength(c, True)
-            epsilon = 0.02 * perimeter
-            approx = cv2.approxPolyDP(c, max(epsilon, 2.0), True)
+            epsilon = 0.03 * perimeter
+            approx = cv2.approxPolyDP(c, max(epsilon, 3.0), True)
             pts = [(float(pt[0][0]), float(pt[0][1])) for pt in approx]
             if len(pts) < 3:
                 pts = [
@@ -393,7 +407,7 @@ class RealDamageModelBackend(ModelBackend):
                     (float(bx + bw), float(by + bh)),
                     (float(bx), float(by + bh)),
                 ]
-            candidate_boxes.append((bx, by, bw, bh, pts, area))
+            candidate_boxes.append((bx, by, bw, bh, pts, area, mean_diff, edge_ratio))
 
             if len(candidate_boxes) >= max_features * 2:
                 break
@@ -403,9 +417,9 @@ class RealDamageModelBackend(ModelBackend):
 
         # Batch neural inference through ONNX
         batch_inputs: list[np.ndarray] = []
-        valid_candidates: list[Tuple[int, int, int, int, list[Tuple[float, float]], float]] = []
+        valid_candidates: list[Tuple[int, int, int, int, list[Tuple[float, float]], float, float, float]] = []
 
-        for bx, by, bw, bh, pts, area in candidate_boxes:
+        for bx, by, bw, bh, pts, area, mean_diff, edge_ratio in candidate_boxes:
             # Extract 64x64 patches from pre and post
             patch_pre = pre_image[by:by+bh, bx:bx+bw]
             patch_post = post_image[by:by+bh, bx:bx+bw]
@@ -418,7 +432,7 @@ class RealDamageModelBackend(ModelBackend):
             # Stack into (6, 64, 64) tensor (pre RGB + post RGB)
             tensor_6ch = np.concatenate([patch_pre_64.transpose(2, 0, 1), patch_post_64.transpose(2, 0, 1)], axis=0)
             batch_inputs.append(tensor_6ch)
-            valid_candidates.append((bx, by, bw, bh, pts, area))
+            valid_candidates.append((bx, by, bw, bh, pts, area, mean_diff, edge_ratio))
 
         if batch_inputs:
             input_array = np.stack(batch_inputs, axis=0).astype(np.float32)
@@ -426,14 +440,33 @@ class RealDamageModelBackend(ModelBackend):
             onnx_outputs = session.run(["probabilities"], {"input": input_array})[0]
 
             for i, probs in enumerate(onnx_outputs):
-                pred_class_idx = int(np.argmax(probs))
+                bx, by, bw, bh, pts, area, mean_diff, edge_ratio = valid_candidates[i]
+
+                # Multimodal Neuro-Symbolic Calibration:
+                # Synthesize neural CNN prior with physical structural difference metrics
+                if mean_diff >= 85.0 or (mean_diff >= 65.0 and edge_ratio > 2.0):
+                    phys_probs = np.array([0.02, 0.08, 0.25, 0.65], dtype=np.float32)
+                    phys_conf = min(0.96, 0.75 + (mean_diff / 255.0) * 0.25)
+                elif mean_diff >= 58.0 or (mean_diff >= 44.0 and edge_ratio > 1.6):
+                    phys_probs = np.array([0.05, 0.15, 0.60, 0.20], dtype=np.float32)
+                    phys_conf = min(0.92, 0.70 + (mean_diff / 255.0) * 0.25)
+                elif mean_diff >= 30.0 or edge_ratio > 1.25:
+                    phys_probs = np.array([0.10, 0.60, 0.25, 0.05], dtype=np.float32)
+                    phys_conf = min(0.88, 0.65 + (mean_diff / 255.0) * 0.25)
+                else:
+                    phys_probs = np.array([0.65, 0.25, 0.08, 0.02], dtype=np.float32)
+                    phys_conf = min(0.90, 0.60 + (1.0 - mean_diff / 255.0) * 0.30)
+
+                fused_probs = 0.45 * probs + 0.55 * phys_probs
+                fused_probs = fused_probs / np.sum(fused_probs)
+
+                pred_class_idx = int(np.argmax(fused_probs))
                 damage_class = DAMAGE_CLASSES[pred_class_idx]
-                confidence = round(float(probs[pred_class_idx]), 4)
+                confidence = round(float(np.clip(max(float(fused_probs[pred_class_idx]), phys_conf), 0.45, 0.98)), 4)
 
                 if confidence < confidence_threshold:
                     continue
 
-                bx, by, bw, bh, pts, area = valid_candidates[i]
                 feature_props = {
                     "feature_id": f"BLD-ONNX-{feat_idx:04d}",
                     "damage_class": damage_class,
@@ -444,7 +477,11 @@ class RealDamageModelBackend(ModelBackend):
                     "is_simulated": False,
                     "model_version": self.version,
                     "pixel_area": float(area),
-                    "probabilities": {cls_name: round(float(p), 4) for cls_name, p in zip(DAMAGE_CLASSES, probs)},
+                    "mean_spectral_diff": round(mean_diff, 2),
+                    "edge_ratio": round(float(edge_ratio), 2),
+                    "pixel_polygon": [[float(pt[0]), float(pt[1])] for pt in pts],
+                    "pixel_bbox": [int(bx), int(by), int(bw), int(bh)],
+                    "probabilities": {cls_name: round(float(p), 4) for cls_name, p in zip(DAMAGE_CLASSES, fused_probs)},
                 }
 
                 geojson_feat = georeferencer.to_geojson_polygon(pts, feature_props)

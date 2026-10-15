@@ -541,6 +541,13 @@ elif cfg.mode == "Upload mode":
             unsafe_allow_html=True,
         )
 
+        render_imagery_section(
+            st.session_state.get("upload_pre_path"),
+            st.session_state.get("upload_post_path"),
+            st.session_state.get("upload_overlay_path"),
+            tactical_overlay_path=st.session_state.get("upload_tactical_overlay_path"),
+        )
+
         updated_pz, inund_geo, route_data = render_c2_split_terminal(
             geojson_data=upload_geojson,
             priority_zones=up_pz,
@@ -554,11 +561,6 @@ elif cfg.mode == "Upload mode":
         )
         with st.expander("📋 Detailed Incident Action Plan (FEMA / INSARAG Radio Protocol)", expanded=False):
             render_tactical_incident_action_plan(updated_pz, up_metrics, up_time)
-        render_imagery_section(
-            st.session_state.get("upload_pre_path"),
-            st.session_state.get("upload_post_path"),
-            st.session_state.get("upload_overlay_path"),
-        )
         render_priority_zones_section(updated_pz)
         render_building_inventory_table(up_df)
         render_export_section(
@@ -566,7 +568,7 @@ elif cfg.mode == "Upload mode":
             metrics=up_metrics,
             df_results=up_df,
             priority_zones=updated_pz,
-            overlay_path=st.session_state.get("upload_overlay_path"),
+            overlay_path=st.session_state.get("upload_tactical_overlay_path") or st.session_state.get("upload_overlay_path"),
         )
 
     else:
@@ -625,6 +627,7 @@ else:
         st.session_state.get("pre_display_path"),
         st.session_state.get("post_display_path"),
         st.session_state.get("overlay_path"),
+        tactical_overlay_path=st.session_state.get("tactical_overlay_path"),
     )
     render_priority_zones_section(updated_pz)
     render_building_inventory_table(df_results)
@@ -633,5 +636,5 @@ else:
         metrics=metrics,
         df_results=df_results,
         priority_zones=updated_pz,
-        overlay_path=st.session_state.get("overlay_path"),
+        overlay_path=st.session_state.get("tactical_overlay_path") or st.session_state.get("overlay_path"),
     )

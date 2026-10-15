@@ -277,7 +277,7 @@ def create_tactical_detection_overlay(
         "no-damage": (69, 167, 40),       # Green
     }
 
-    # Extract all feature points to determine georeferencing scale
+    # Extract all feature points to determine georeferencing scale as fallback
     features = feature_collection.get("features", [])
     all_lons: list[float] = []
     all_lats: list[float] = []
@@ -323,7 +323,7 @@ def create_tactical_detection_overlay(
         for c in range(grid_cols + 1):
             x = min(w - 1, c * cell_w)
             cv2.line(grid_overlay, (x, 0), (x, h), (180, 220, 240), 1)
-        cv2.addWeighted(grid_overlay, 0.40, canvas, 0.60, 0, canvas)
+        cv2.addWeighted(grid_overlay, 0.35, canvas, 0.65, 0, canvas)
 
         # Highlight Rank #1 Zone (RESCUE FIRST)
         for idx, z in enumerate(priority_zones):
@@ -340,7 +340,7 @@ def create_tactical_detection_overlay(
                 # Strong red semi-transparent overlay for first rescue area
                 rescue_overlay = canvas.copy()
                 cv2.rectangle(rescue_overlay, (zx0, zy0), (zx1, zy1), (30, 30, 220), -1)
-                cv2.addWeighted(rescue_overlay, 0.28, canvas, 0.72, 0, canvas)
+                cv2.addWeighted(rescue_overlay, 0.22, canvas, 0.78, 0, canvas)
 
                 # Bright tactical red boundary + target corners
                 cv2.rectangle(canvas, (zx0, zy0), (zx1, zy1), (40, 40, 240), 3)
@@ -358,7 +358,7 @@ def create_tactical_detection_overlay(
                 cv2.drawMarker(canvas, (rcx, rcy), (0, 255, 255), cv2.MARKER_CROSS, 28, 2)
 
                 # Label tag
-                tag = f"RESCUE FIRST: {zid} (Rank #1)"
+                tag = f"RESCUE FIRST: {zid} (Rank #1 Focus)"
                 (tw, th), _ = cv2.getTextSize(tag, cv2.FONT_HERSHEY_SIMPLEX, 0.50, 2)
                 cv2.rectangle(canvas, (zx0 + 6, zy0 + 6), (zx0 + tw + 18, zy0 + th + 16), (40, 40, 240), -1)
                 cv2.putText(canvas, tag, (zx0 + 12, zy0 + th + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
@@ -367,7 +367,10 @@ def create_tactical_detection_overlay(
                 z_tag = f"{zid} (Rank #{rank})"
                 cv2.putText(canvas, z_tag, (zx0 + 8, zy0 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (200, 230, 255), 1, cv2.LINE_AA)
 
-    # 2. Draw Detected Building Footprints & EMS-98 Labels
+    # 2. Draw Detected Building Footprints & EMS-98 Labels (Semi-transparent Fill + Crisp Borders)
+    fill_layer = canvas.copy()
+    bld_polys_to_stroke: list[tuple[np.ndarray, tuple[int, int, int], str, str, float, tuple[int, int, int, int]]] = []
+
     for feat in features:
         props = feat.get("properties", {})
         dmg = props.get("damage_class", props.get("damage", "no-damage"))
@@ -375,23 +378,44 @@ def create_tactical_detection_overlay(
         bld_id = props.get("feature_id", "BLD")
         color = ems_colors.get(dmg, (200, 200, 200))
 
-        ring = feat.get("geometry", {}).get("coordinates", [[]])[0]
-        if len(ring) >= 3:
-            pts = np.array([to_px(pt[0], pt[1]) for pt in ring], np.int32)
-            cv2.polylines(canvas, [pts], isClosed=True, color=color, thickness=2)
+        # Check for direct native pixel polygon first
+        if "pixel_polygon" in props and len(props["pixel_polygon"]) >= 3:
+            pts = np.array(props["pixel_polygon"], dtype=np.int32)
+        else:
+            ring = feat.get("geometry", {}).get("coordinates", [[]])[0]
+            if len(ring) >= 3:
+                pts = np.array([to_px(pt[0], pt[1]) for pt in ring], dtype=np.int32)
+            else:
+                continue
 
-            # Bounding box of the polygon
-            bx0, by0, bw, bh = cv2.boundingRect(pts)
-            # Corner accents
-            al = min(8, max(3, bw // 3))
-            cv2.line(canvas, (bx0, by0), (bx0 + al, by0), color, 2)
-            cv2.line(canvas, (bx0, by0), (bx0, by0 + al), color, 2)
-            cv2.line(canvas, (bx0 + bw, by0), (bx0 + bw - al, by0), color, 2)
-            cv2.line(canvas, (bx0 + bw, by0), (bx0 + bw, by0 + al), color, 2)
+        # Fill building polygon with semi-transparent tint
+        cv2.fillPoly(fill_layer, [pts], color)
+        bx0, by0, bw, bh = cv2.boundingRect(pts)
+        bld_polys_to_stroke.append((pts, color, bld_id, dmg, conf, (bx0, by0, bw, bh)))
 
-            # Tiny label
-            short_lbl = f"{bld_id[:7]} {dmg[:3].upper()}"
-            cv2.putText(canvas, short_lbl, (bx0, max(12, by0 - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.32, color, 1, cv2.LINE_AA)
+    # Blend polygon fills into canvas
+    cv2.addWeighted(fill_layer, 0.28, canvas, 0.72, 0, canvas)
+
+    # Stroke building outlines and draw tactical tags
+    for pts, color, bld_id, dmg, conf, (bx0, by0, bw, bh) in bld_polys_to_stroke:
+        cv2.polylines(canvas, [pts], isClosed=True, color=color, thickness=2)
+
+        # Corner accents around bounding box
+        al = min(8, max(3, bw // 3))
+        cv2.line(canvas, (bx0, by0), (bx0 + al, by0), color, 2)
+        cv2.line(canvas, (bx0, by0), (bx0, by0 + al), color, 2)
+        cv2.line(canvas, (bx0 + bw, by0), (bx0 + bw - al, by0), color, 2)
+        cv2.line(canvas, (bx0 + bw, by0), (bx0 + bw, by0 + al), color, 2)
+
+        # Render tactical label pill on damaged structures
+        if dmg in ["destroyed", "major-damage", "minor-damage"]:
+            short_lbl = f"{dmg[:4].upper()} {int(conf*100)}%"
+            (lw, lh), _ = cv2.getTextSize(short_lbl, cv2.FONT_HERSHEY_SIMPLEX, 0.34, 1)
+            lx = max(2, bx0)
+            ly = max(lh + 4, by0 - 2)
+            cv2.rectangle(canvas, (lx - 1, ly - lh - 3), (lx + lw + 3, ly + 2), (15, 23, 42), -1)
+            cv2.rectangle(canvas, (lx - 1, ly - lh - 3), (lx + lw + 3, ly + 2), color, 1)
+            cv2.putText(canvas, short_lbl, (lx + 1, ly - 1), cv2.FONT_HERSHEY_SIMPLEX, 0.34, (255, 255, 255), 1, cv2.LINE_AA)
 
     # 3. Tactical Military Corner Brackets
     L = 35
@@ -408,7 +432,7 @@ def create_tactical_detection_overlay(
 
     cv2.putText(
         canvas,
-        f"MERIDIAN TACTICAL OPTICAL MAPPING · {len(features)} STRUCTURES DETECTED · REAL AI ANALYSIS",
+        f"MERIDIAN TACTICAL OPTICAL MAPPING · {len(features)} STRUCTURES DETECTED · NATIVE RESOLUTION",
         (14, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (0, 240, 210), 1, cv2.LINE_AA
     )
     cv2.putText(
